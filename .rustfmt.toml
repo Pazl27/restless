@@ -1,0 +1,6 @@
+max_with = 100
+hard_tabs = false
+tab_space = 4
+newline_style = "Unix"
+use_small_heuristics = "Default"
+edition = "2021"

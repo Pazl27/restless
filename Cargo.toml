@@ -1,0 +1,20 @@
+[package]
+name = "restles"
+version = "0.1.0"
+edition = "2021"
+authors = ["Pazl"]
+description = "A postman clone in the terminal"
+keywords = ["postman", "tui"]
+categories = ["command-line-utilities", "development-tools"]
+readme = "README.md"
+repository = "https://github.com/yourusername/restles"
+# license = "MIT OR Apache-2.0"
+
+[dependencies]
+anyhow = "1.0.98"
+ratatui = "0.29.0"
+request = "0.0.8"
+
+[[bin]]
+name = "restles"
+path = "src/main.rs"
