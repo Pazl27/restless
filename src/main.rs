@@ -1,3 +1,4 @@
+use std::io;
 use anyhow::Result;
 use crossterm::event::{
     self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind,
@@ -8,8 +9,6 @@ use crossterm::terminal::{
 };
 use ratatui::backend::{Backend, CrosstermBackend};
 use ratatui::Terminal;
-use std::error::Error;
-use std::io;
 
 mod app;
 use app::{App, CurrentScreen, CurrentlyEditing};

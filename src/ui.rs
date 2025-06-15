@@ -2,7 +2,7 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Style},
     text::{Line, Span, Text},
-    widgets::{Block, Borders, List, ListItem, Paragraph, Clear, Wrap},
+    widgets::{Block, Borders, List, ListItem, Paragraph, Wrap},
     Frame,
 };
 
@@ -16,7 +16,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
             Constraint::Min(1),
             Constraint::Length(3),
         ])
-        .split(f.size());
+        .split(f.area());
 
     let title_block = Block::default()
         .borders(Borders::ALL)
@@ -109,7 +109,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
             .borders(Borders::NONE)
             .style(Style::default().bg(Color::DarkGray));
 
-        let area = centered_rect(60, 25, f.size());
+        let area = centered_rect(60, 25, f.area());
         f.render_widget(popup_block, area);
 
         let popup_chunks = Layout::default()
@@ -151,7 +151,7 @@ pub fn ui(f: &mut Frame, app: &mut App) {
             .block(popup_block)
             .wrap(Wrap { trim: false });
 
-        let area = centered_rect(60, 25, f.size());
+        let area = centered_rect(60, 25, f.area());
         f.render_widget(exit_paragraph, area);
     }
 }
