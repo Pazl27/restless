@@ -1,7 +1,7 @@
 use std::io;
 use anyhow::Result;
 use crossterm::event::{
-    self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind,
+    self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode
 };
 use crossterm::execute;
 use crossterm::terminal::{
@@ -11,23 +11,21 @@ use ratatui::backend::{Backend, CrosstermBackend};
 use ratatui::Terminal;
 
 mod app;
-use app::{App, CurrentScreen, CurrentlyEditing};
+use app::{App, CurrentScreen};
 
 mod ui;
 use ui::ui;
 
 fn main() -> Result<()> {
-    // setup terminal
     enable_raw_mode()?;
-    let mut stderr = io::stderr(); // This is a special case. Normally using stdout is fine
+    let mut stderr = io::stderr();
     execute!(stderr, EnterAlternateScreen, EnableMouseCapture)?;
 
     let backend = CrosstermBackend::new(stderr);
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = App::new();
-    app.pairs.insert("name".to_string(), "Me".to_string());
-    let res = run_app(&mut terminal, &mut app);
+    run_app(&mut terminal, &mut app)?;
 
     disable_raw_mode()?;
     execute!(
@@ -37,14 +35,6 @@ fn main() -> Result<()> {
     )?;
     terminal.show_cursor()?;
 
-    if let Ok(do_print) = res {
-        if do_print {
-            app.print_json()?;
-        }
-    } else if let Err(err) = res {
-        println!("{err:?}");
-    }
-
     Ok(())
 }
 
@@ -53,77 +43,57 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
         terminal.draw(|f| ui(f, app))?;
 
         if let Event::Key(key) = event::read()? {
-            // dbg!(key.code);
             if key.kind == event::KeyEventKind::Release {
-                continue; // ignore release events
+                continue;
             }
 
             match app.current_screen {
-                CurrentScreen::Main => match key.code {
-                    KeyCode::Char('e') => {
-                        app.current_screen = CurrentScreen::Editing;
-                        app.currently_editing = Some(CurrentlyEditing::Key)
-                    }
+                CurrentScreen::Main | CurrentScreen::Url | CurrentScreen::Values | CurrentScreen::Response => match key.code {
                     KeyCode::Char('q') => {
-                        app.current_screen = CurrentScreen::Exiting;
-                    }
-                    _ => {}
-                },
-
-                CurrentScreen::Exiting => match key.code {
-                    KeyCode::Char('y') => {
                         return Ok(true);
                     }
-                    KeyCode::Char('n') | KeyCode::Char('q') => {
-                        return Ok(false);
+                    KeyCode::Tab => {
+                        app.tabs[app.selected_tab].url = app.url_input.clone();
+                        app.selected_tab = (app.selected_tab + 1) % app.tabs.len();
+                        app.url_input = app.tabs[app.selected_tab].url.clone();
+                    }
+                    KeyCode::Char('{') => {
+                        app.current_screen = match app.current_screen {
+                            CurrentScreen::Url => CurrentScreen::Values,
+                            CurrentScreen::Values => CurrentScreen::Response,
+                            CurrentScreen::Response => CurrentScreen::Url,
+                            _ => CurrentScreen::Url,
+                        };
+                    }
+                    KeyCode::Char('}') => {
+                        app.current_screen = match app.current_screen {
+                            CurrentScreen::Url => CurrentScreen::Response,
+                            CurrentScreen::Values => CurrentScreen::Url,
+                            CurrentScreen::Response => CurrentScreen::Values,
+                            _ => CurrentScreen::Url,
+                        };
+                    }
+                    KeyCode::Char('i') => {
+                        if let CurrentScreen::Url = app.current_screen {
+                            app.current_screen = CurrentScreen::Editing;
+                        }
                     }
                     _ => {}
                 },
 
-                CurrentScreen::Editing if key.kind == KeyEventKind::Press => match key.code {
+                CurrentScreen::Editing => match key.code {
                     KeyCode::Enter => {
-                        if let Some(editing) = &app.currently_editing {
-                            match editing {
-                                CurrentlyEditing::Key => {
-                                    app.currently_editing = Some(CurrentlyEditing::Value);
-                                }
-                                CurrentlyEditing::Value => {
-                                    app.save_key_value();
-                                    app.current_screen = CurrentScreen::Main;
-                                }
-                            }
-                        }
+                        app.tabs[app.selected_tab].url = app.url_input.clone();
+                        app.current_screen = CurrentScreen::Url;
                     }
                     KeyCode::Backspace => {
-                        if let Some(editing) = &app.currently_editing {
-                            match editing {
-                                CurrentlyEditing::Key => {
-                                    app.key_input.pop();
-                                }
-                                CurrentlyEditing::Value => {
-                                    app.value_input.pop();
-                                }
-                            }
-                        }
+                        app.url_input.pop();
                     }
                     KeyCode::Esc => {
-                        app.current_screen = CurrentScreen::Main;
-                        app.currently_editing = None;
+                        app.current_screen = CurrentScreen::Url;
                     }
-                    KeyCode::Tab => {
-                        app.toggle_editing();
-                    }
-                    KeyCode::Char(value) => {
-                        if let Some(editing) = &app.currently_editing {
-                            match editing {
-                                CurrentlyEditing::Key => {
-                                    app.key_input.push(value);
-                                }
-                                CurrentlyEditing::Value => {
-                                    app.value_input.push(value);
-                                }
-                            }
-                        }
+                    KeyCode::Char(c) => {
+                        app.url_input.push(c);
                     }
                     _ => {}
                 },
