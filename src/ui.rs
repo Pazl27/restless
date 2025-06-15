@@ -1,5 +1,5 @@
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect}, style::{Color, Style}, widgets::{Block, Borders, Paragraph, Tabs}, Frame
+    layout::{Constraint, Direction, Layout, Position, Rect}, style::{Color, Style}, widgets::{Block, Borders, Paragraph, Tabs}, Frame
 };
 
 use crate::app::App;
@@ -60,6 +60,13 @@ fn render_url_input(f: &mut Frame, app: &App, area: Rect) {
 
     let url_input = Paragraph::new(format!("URL: {}", url)).block(block);
     f.render_widget(url_input, area);
+
+    if let crate::app::CurrentScreen::Editing = app.current_screen {
+        let x = area.x + 5 + url.len() as u16;
+        let y = area.y + 1;
+        let pos = Position { x, y };
+        f.set_cursor_position(pos);
+    }
 
 }
 
