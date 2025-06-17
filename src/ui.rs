@@ -34,10 +34,10 @@ fn render_content(f: &mut Frame, app: &mut App, area: Rect) {
         ].as_ref())
         .split(area);
 
-    render_tabs(f, app, content_chunks[0]);
-    render_url_input(f, app, content_chunks[1]);
-    render_params_input(f, app, content_chunks[2]);
     render_response_output(f,app, content_chunks[3]);
+    render_params_input(f, app, content_chunks[2]);
+    render_url_input(f, app, content_chunks[1]);
+    render_tabs(f, app, content_chunks[0]);
 }
 
 fn render_tabs(f: &mut Frame, app: &App, area: Rect) {

@@ -5,7 +5,6 @@ pub enum CurrentScreen {
     Values,
     Response,
 
-    Main,
     Editing,
     Exiting,
 }
@@ -46,5 +45,35 @@ impl App {
             method_dropdown_open: false,
             method_dropdown_selected: 0,
         }
+    }
+
+    pub fn save_current_tab_state(&mut self) {
+        if let Some(tab) = self.tabs.get_mut(self.selected_tab) {
+            tab.url = self.url_input.clone();
+            tab.method = self.selected_method;
+        }
+    }
+
+    pub fn restore_current_tab_state(&mut self) {
+        if let Some(tab) = self.tabs.get(self.selected_tab) {
+            self.url_input = tab.url.clone();
+            self.selected_method = tab.method;
+        }
+    }
+
+    pub fn next_tab(&mut self) {
+        self.save_current_tab_state();
+        self.selected_tab = (self.selected_tab + 1) % self.tabs.len();
+        self.restore_current_tab_state();
+    }
+
+    pub fn prev_tab(&mut self) {
+        self.save_current_tab_state();
+        if self.selected_tab == 0 {
+            self.selected_tab = self.tabs.len() - 1;
+        } else {
+            self.selected_tab -= 1;
+        }
+        self.restore_current_tab_state();
     }
 }

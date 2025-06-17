@@ -50,15 +50,15 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
             }
 
             match app.current_screen {
-                CurrentScreen::Main | CurrentScreen::Url | CurrentScreen::Values | CurrentScreen::Response => {
+                 CurrentScreen::Url | CurrentScreen::Values | CurrentScreen::Response => {
                     if app.method_dropdown_open {
                         match key.code {
-                            KeyCode::Up => {
+                            KeyCode::Char('k') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
                                 if app.method_dropdown_selected > 0 {
                                     app.method_dropdown_selected -= 1;
                                 }
                             }
-                            KeyCode::Down => {
+                            KeyCode::Char('j') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
                                 if app.method_dropdown_selected < 3 {
                                     app.method_dropdown_selected += 1;
                                 }
@@ -82,18 +82,10 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                         match key.code {
                             // navigation between tabs
                             KeyCode::Tab => {
-                                app.tabs[app.selected_tab].url = app.url_input.clone();
-                                app.selected_tab = (app.selected_tab + 1) % app.tabs.len();
-                                app.url_input = app.tabs[app.selected_tab].url.clone();
+                                app.next_tab();
                             }
                             KeyCode::BackTab => {
-                                app.tabs[app.selected_tab].url = app.url_input.clone();
-                                if app.selected_tab == 0 {
-                                    app.selected_tab = app.tabs.len() - 1;
-                                } else {
-                                    app.selected_tab -= 1;
-                                }
-                                app.url_input = app.tabs[app.selected_tab].url.clone();
+                                app.prev_tab();
                             }
 
                             // Open method dropdown if method box is focused
