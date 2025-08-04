@@ -1,4 +1,5 @@
 use crate::app::tab::Tab;
+use crate::logic::HttpMethod;
 
 pub enum CurrentScreen {
     Url,
@@ -7,14 +8,6 @@ pub enum CurrentScreen {
 
     Editing,
     Exiting,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum HttpMethod {
-    Get,
-    Post,
-    Put,
-    Delete,
 }
 
 pub struct App {
@@ -32,6 +25,7 @@ pub struct App {
 impl App {
     pub fn new() -> App {
         let tabs = vec![
+            // Testing with some initial tabs
             Tab::new("Tab 1".to_string(), "http://example.com".to_string()),
             Tab::new("Tab 2".to_string(), "http://example.org".to_string()),
             Tab::new("Tab 3".to_string(), "http://example.net".to_string()),
@@ -41,7 +35,7 @@ impl App {
             tabs,
             selected_tab: 0,
             url_input: String::new(),
-            selected_method: HttpMethod::Get,
+            selected_method: HttpMethod::GET,
             method_dropdown_open: false,
             method_dropdown_selected: 0,
         }

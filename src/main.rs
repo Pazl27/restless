@@ -16,7 +16,11 @@ use app::{App, CurrentScreen};
 mod ui;
 use ui::ui;
 
-fn main() -> Result<()> {
+mod logic;
+use crate::logic::HttpMethod;
+
+#[tokio::main]
+async fn main() -> Result<()> {
     enable_raw_mode()?;
     let mut stderr = io::stderr();
     execute!(stderr, EnterAlternateScreen, EnableMouseCapture)?;
@@ -39,7 +43,6 @@ fn main() -> Result<()> {
 }
 
 fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<bool> {
-    use crate::app::HttpMethod;
 
     loop {
         terminal.draw(|f| ui(f, app))?;
@@ -53,23 +56,27 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                  CurrentScreen::Url | CurrentScreen::Values | CurrentScreen::Response => {
                     if app.method_dropdown_open {
                         match key.code {
-                            KeyCode::Char('k') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
-                                if app.method_dropdown_selected > 0 {
+                            KeyCode::Up => {
+                                if app.method_dropdown_selected == 0 {
+                                    app.method_dropdown_selected = 3;
+                                } else {
                                     app.method_dropdown_selected -= 1;
                                 }
                             }
-                            KeyCode::Char('j') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
-                                if app.method_dropdown_selected < 3 {
+                            KeyCode::Down => {
+                                if app.method_dropdown_selected == 3 {
+                                    app.method_dropdown_selected = 0;
+                                } else {
                                     app.method_dropdown_selected += 1;
                                 }
                             }
                             KeyCode::Enter => {
                                 app.selected_method = match app.method_dropdown_selected {
-                                    0 => HttpMethod::Get,
-                                    1 => HttpMethod::Post,
-                                    2 => HttpMethod::Put,
-                                    3 => HttpMethod::Delete,
-                                    _ => HttpMethod::Get,
+                                    0 => HttpMethod::GET,
+                                    1 => HttpMethod::POST,
+                                    2 => HttpMethod::PUT,
+                                    3 => HttpMethod::DELETE,
+                                    _ => HttpMethod::GET,
                                 };
                                 app.method_dropdown_open = false;
                             }
@@ -93,43 +100,27 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                                 if let CurrentScreen::Url = app.current_screen {
                                     app.method_dropdown_open = true;
                                     app.method_dropdown_selected = match app.selected_method {
-                                        HttpMethod::Get => 0,
-                                        HttpMethod::Post => 1,
-                                        HttpMethod::Put => 2,
-                                        HttpMethod::Delete => 3,
+                                        HttpMethod::GET => 0,
+                                        HttpMethod::POST => 1,
+                                        HttpMethod::PUT => 2,
+                                        HttpMethod::DELETE => 3,
                                     };
                                 }
                             }
                             KeyCode::Char('m') => {
                                 app.method_dropdown_open = true;
                                 app.method_dropdown_selected = match app.selected_method {
-                                    HttpMethod::Get => 0,
-                                    HttpMethod::Post => 1,
-                                    HttpMethod::Put => 2,
-                                    HttpMethod::Delete => 3,
+                                    HttpMethod::GET => 0,
+                                    HttpMethod::POST => 1,
+                                    HttpMethod::PUT => 2,
+                                    HttpMethod::DELETE => 3,
                                 };
                             }
                             KeyCode::Char('q') => {
                                 app.current_screen = CurrentScreen::Exiting;
                                 return Ok(true);
                             }
-                            KeyCode::Char('j') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
-                                app.current_screen = match app.current_screen {
-                                    CurrentScreen::Url => CurrentScreen::Values,
-                                    CurrentScreen::Values => CurrentScreen::Response,
-                                    CurrentScreen::Response => CurrentScreen::Url,
-                                    _ => CurrentScreen::Url,
-                                };
-                            }
-                            KeyCode::Char('k') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
-                                app.current_screen = match app.current_screen {
-                                    CurrentScreen::Url => CurrentScreen::Response,
-                                    CurrentScreen::Values => CurrentScreen::Url,
-                                    CurrentScreen::Response => CurrentScreen::Values,
-                                    _ => CurrentScreen::Url,
-                                };
-                            }
-                            KeyCode::Char('i') => {
+                            KeyCode::Char('u') => {
                                 if let CurrentScreen::Url = app.current_screen {
                                     app.current_screen = CurrentScreen::Editing;
                                 }

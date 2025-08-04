@@ -63,7 +63,7 @@ fn render_url_input(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_url_input_box(f: &mut Frame, app: &App, area: Rect) {
-    use crate::app::HttpMethod;
+    use crate::logic::HttpMethod;
 
     let url = &app.url_input;
     let mut block = Block::default().borders(Borders::ALL);
@@ -74,16 +74,16 @@ fn render_url_input_box(f: &mut Frame, app: &App, area: Rect) {
 
     // Draw method box
     let method_str = match app.selected_method {
-        HttpMethod::Get => "GET",
-        HttpMethod::Post => "POST",
-        HttpMethod::Put => "PUT",
-        HttpMethod::Delete => "DELETE",
+        HttpMethod::GET => "GET",
+        HttpMethod::POST => "POST",
+        HttpMethod::PUT => "PUT",
+        HttpMethod::DELETE => "DELETE",
     };
     let method_color = match app.selected_method {
-        HttpMethod::Get => Color::Green,
-        HttpMethod::Post => Color::Blue,
-        HttpMethod::Put => Color::Yellow,
-        HttpMethod::Delete => Color::Red,
+        HttpMethod::GET => Color::Green,
+        HttpMethod::POST => Color::Blue,
+        HttpMethod::PUT => Color::Yellow,
+        HttpMethod::DELETE => Color::Red,
     };
 
     let method_block = Block::default().borders(Borders::ALL);

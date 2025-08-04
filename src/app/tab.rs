@@ -1,4 +1,4 @@
-use crate::app::HttpMethod;
+use crate::logic::HttpMethod;
 
 pub struct Tab {
     pub name: String,
@@ -11,7 +11,7 @@ impl Tab {
         Tab {
             name,
             url,
-            method: HttpMethod::Get,
+            method: HttpMethod::GET,
         }
     }
 }
