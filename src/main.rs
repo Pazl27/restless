@@ -29,7 +29,7 @@ async fn main() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
 
     let mut app = App::new();
-    run_app(&mut terminal, &mut app)?;
+    run_app(&mut terminal, &mut app).await?;
 
     disable_raw_mode()?;
     execute!(
@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<bool> {
+async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<bool> {
 
     loop {
         terminal.draw(|f| ui(f, app))?;
@@ -94,18 +94,8 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
                             KeyCode::BackTab => {
                                 app.prev_tab();
                             }
-
-                            // Open method dropdown if method box is focused
                             KeyCode::Enter => {
-                                if let CurrentScreen::Url = app.current_screen {
-                                    app.method_dropdown_open = true;
-                                    app.method_dropdown_selected = match app.selected_method {
-                                        HttpMethod::GET => 0,
-                                        HttpMethod::POST => 1,
-                                        HttpMethod::PUT => 2,
-                                        HttpMethod::DELETE => 3,
-                                    };
-                                }
+                                let response = app.tabs[app.selected_tab].request.send().await?;
                             }
                             KeyCode::Char('m') => {
                                 app.method_dropdown_open = true;
@@ -132,7 +122,7 @@ fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> io::Result<
 
                 CurrentScreen::Editing => match key.code {
                     KeyCode::Enter => {
-                        app.tabs[app.selected_tab].url = app.url_input.clone();
+                        app.tabs[app.selected_tab].request.url = app.url_input.clone();
                         app.current_screen = CurrentScreen::Url;
                     }
                     KeyCode::Backspace => {

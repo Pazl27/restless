@@ -43,15 +43,15 @@ impl App {
 
     pub fn save_current_tab_state(&mut self) {
         if let Some(tab) = self.tabs.get_mut(self.selected_tab) {
-            tab.url = self.url_input.clone();
-            tab.method = self.selected_method;
+            tab.request.url = self.url_input.clone();
+            tab.request.method = (&self.selected_method).into();
         }
     }
 
     pub fn restore_current_tab_state(&mut self) {
         if let Some(tab) = self.tabs.get(self.selected_tab) {
-            self.url_input = tab.url.clone();
-            self.selected_method = tab.method;
+            self.url_input = tab.request.url.clone();
+            self.selected_method = HttpMethod::try_from(&tab.request.method).unwrap_or(HttpMethod::GET);
         }
     }
 

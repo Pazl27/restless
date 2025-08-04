@@ -27,7 +27,27 @@ impl From<&HttpMethod> for Method {
     }
 }
 
-pub async fn send_request(req: &Request) -> Result<String> {
+impl TryFrom<&Method> for HttpMethod {
+    type Error = ();
+
+    fn try_from(method: &Method) -> Result<Self, Self::Error> {
+        match *method {
+            Method::GET => Ok(HttpMethod::GET),
+            Method::POST => Ok(HttpMethod::POST),
+            Method::PUT => Ok(HttpMethod::PUT),
+            Method::DELETE => Ok(HttpMethod::DELETE),
+            _ => Err(()),
+        }
+    }
+}
+
+impl Request {
+    pub async fn send(&self) -> Result<String> {
+        send_request(self).await
+    }
+}
+
+async fn send_request(req: &Request) -> Result<String> {
     let client = Client::new();
     let mut request_builder = client.request((&req.method).into(), &req.url);
 

@@ -1,17 +1,31 @@
-use crate::logic::HttpMethod;
+use crate::logic::{request::Request, response::Response, HttpMethod};
 
 pub struct Tab {
     pub name: String,
-    pub url: String,
-    pub method: HttpMethod,
+    pub request: Request,
+    pub response: Option<Response>,
 }
 
 impl Tab {
     pub fn new(name: String, url: String) -> Self {
         Tab {
             name,
-            url,
-            method: HttpMethod::GET,
+            request: Request {
+                url: url.clone(),
+                method: (&HttpMethod::GET).into(),
+                headers: vec![],
+                body: None,
+            },
+            response: None
+
         }
+    }
+
+    pub fn method(&self) -> HttpMethod {
+        HttpMethod::try_from(&self.request.method).unwrap_or(HttpMethod::GET)
+    }
+
+    pub fn ulr(&self) -> &str {
+        &self.request.url
     }
 }
