@@ -1,6 +1,7 @@
 use crate::app::tab::Tab;
 use crate::logic::HttpMethod;
 
+#[derive(Eq, PartialEq)]
 pub enum CurrentScreen {
     Url,
     Values,
@@ -20,6 +21,10 @@ pub struct App {
     pub selected_method: HttpMethod,
     pub method_dropdown_open: bool,
     pub method_dropdown_selected: usize,
+
+    pub response_tab_selected: usize,
+    pub response_scroll: usize,
+    pub response_scroll_state: ratatui::widgets::ScrollbarState,
 }
 
 impl App {
@@ -31,13 +36,16 @@ impl App {
             Tab::new("Tab 3".to_string(), "http://example.net".to_string()),
         ];
         App {
-            current_screen: CurrentScreen::Url,
+            current_screen: CurrentScreen::Values,
             tabs,
             selected_tab: 0,
             url_input: String::new(),
             selected_method: HttpMethod::GET,
             method_dropdown_open: false,
             method_dropdown_selected: 0,
+            response_tab_selected: 1,
+            response_scroll: 0,
+            response_scroll_state: ratatui::widgets::ScrollbarState::default(),
         }
     }
 

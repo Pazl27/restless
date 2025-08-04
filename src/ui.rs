@@ -1,40 +1,32 @@
 use ratatui::{
-    layout::{Constraint, Direction, Layout, Position, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Position, Rect},
     style::{Color, Style},
-    text::Span,
-    widgets::{Block, Borders, Paragraph, Tabs, Clear},
-    Frame
+    text::{Line, Span},
+    widgets::{Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, Tabs},
+    Frame,
 };
 
 use crate::app::App;
 
 pub fn ui(f: &mut Frame, app: &mut App) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([Constraint::Length(20), Constraint::Min(0)].as_ref())
-        .split(f.area());
-
-    render_nav(f, chunks[0]);
-    render_content(f, app, chunks[1]);
-}
-
-fn render_nav(f: &mut Frame, area: Rect) {
-    let nav_block = Block::default().title("Navigation").borders(Borders::ALL);
-    f.render_widget(nav_block, area);
+    render_content(f, app, f.area());
 }
 
 fn render_content(f: &mut Frame, app: &mut App, area: Rect) {
     let content_chunks = Layout::default()
         .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Length(3), // Tabs
-            Constraint::Length(3), // URL input
-            Constraint::Min(5),    // Params/body/headers input
-            Constraint::Min(0),    // Response output
-        ].as_ref())
+        .constraints(
+            [
+                Constraint::Length(3), // Tabs
+                Constraint::Length(3), // URL input
+                Constraint::Min(5),    // Params/body/headers input
+                Constraint::Min(0),    // Response output
+            ]
+            .as_ref(),
+        )
         .split(area);
 
-    render_response_output(f,app, content_chunks[3]);
+    render_response_output(f, app, content_chunks[3]);
     render_params_input(f, app, content_chunks[2]);
     render_url_input(f, app, content_chunks[1]);
     render_tabs(f, app, content_chunks[0]);
@@ -87,9 +79,10 @@ fn render_url_input_box(f: &mut Frame, app: &App, area: Rect) {
     };
 
     let method_block = Block::default().borders(Borders::ALL);
-    let method_paragraph = Paragraph::new(Span::styled(method_str, Style::default().fg(method_color)))
-        .style(Style::default())
-        .block(method_block.title("Method"));
+    let method_paragraph =
+        Paragraph::new(Span::styled(method_str, Style::default().fg(method_color)))
+            .style(Style::default())
+            .block(method_block.title("Method"));
 
     // Layout: [Method][URL]
     let layout = Layout::default()
@@ -120,21 +113,26 @@ fn render_url_input_box(f: &mut Frame, app: &App, area: Rect) {
         let dropdown_block = Block::default()
             .borders(Borders::ALL)
             .border_style(Style::default().fg(Color::White))
-            .style(Style::default().bg(Color::Rgb(30,30,30)));
+            .style(Style::default().bg(Color::Rgb(30, 30, 30)));
         f.render_widget(dropdown_block, dropdown_area);
 
         for (i, method) in methods.iter().enumerate() {
             let is_selected = i == app.method_dropdown_selected;
-            let bg = if is_selected { Color::Rgb(60,60,60) } else { Color::Rgb(30,30,30) };
+            let bg = if is_selected {
+                Color::Rgb(60, 60, 60)
+            } else {
+                Color::Rgb(30, 30, 30)
+            };
             let item_area = ratatui::layout::Rect {
                 x: dropdown_area.x + 1,
                 y: dropdown_area.y + 1 + i as u16,
                 width: dropdown_area.width - 2,
                 height: 1,
             };
-            let item_paragraph = Paragraph::new(Span::styled(*method, Style::default().fg(colors[i])))
-                .style(Style::default().bg(bg))
-                .block(Block::default());
+            let item_paragraph =
+                Paragraph::new(Span::styled(*method, Style::default().fg(colors[i])))
+                    .style(Style::default().bg(bg))
+                    .block(Block::default());
             f.render_widget(item_paragraph, item_area);
         }
     }
@@ -147,19 +145,95 @@ fn render_params_input(f: &mut Frame, _app: &App, area: Rect) {
         block = block.border_style(Style::default().fg(Color::Green));
     }
 
-    let params_input = Paragraph::new("Params/Body/Headers input...")
-        .block(block);
+    let params_input = Paragraph::new("Params/Body/Headers input...").block(block);
     f.render_widget(params_input, area);
 }
 
-fn render_response_output(f: &mut Frame, _app: &App, area: Rect) {
-    let mut block = Block::default().borders(Borders::ALL);
+fn render_response_output(f: &mut Frame, app: &App, area: Rect) {
+    let tab = &app.tabs[app.selected_tab];
 
-    if let crate::app::CurrentScreen::Response = _app.current_screen {
-        block = block.border_style(Style::default().fg(Color::Green));
+    if let Some(response) = &tab.response {
+        // Layout: [Tabs][Response Box]
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(1), Constraint::Min(0)].as_ref())
+            .split(area);
+
+        // Tabs: Headers/Body (above the box)
+        let titles = [Line::from("Headers"), Line::from("Body")];
+        let tabs = Tabs::new(titles)
+            .select(app.response_tab_selected)
+            .highlight_style(Style::default().fg(Color::Yellow))
+            .divider(" ")
+            .padding("", "");
+        f.render_widget(tabs, chunks[0]);
+
+        // Status code in top right
+        let status_span = Span::styled(
+            format!("Status: {}", response.status_code),
+            Style::default().fg(Color::Green),
+        );
+
+        // If selected, make the box border green
+        let mut block = Block::default()
+            .borders(Borders::ALL)
+            .title_alignment(Alignment::Right)
+            .title(status_span);
+
+        if let crate::app::CurrentScreen::Response = app.current_screen {
+            block = block.border_style(Style::default().fg(Color::Green));
+        }
+
+        // Select content for tab
+        let content: Vec<Line> = if app.response_tab_selected == 0 {
+            // Headers
+            if response.headers.is_empty() {
+                vec![Line::from("No headers")]
+            } else {
+                response
+                    .headers
+                    .iter()
+                    .map(|(k, v)| Line::from(Span::raw(format!("{}: {}", k, v))))
+                    .collect()
+            }
+        } else {
+            // Body
+            response
+                .body
+                .lines()
+                .map(|l| Line::from(Span::raw(l.to_string())))
+                .collect()
+        };
+
+        // For scrolling, you may want to add a scroll offset to App (e.g., app.response_scroll)
+        let scroll = app.response_scroll as u16;
+        let content_height = content.len();
+
+        // Update scrollbar state
+        let mut scroll_state = app
+            .response_scroll_state
+            .clone()
+            .content_length(content_height);
+
+        // Scrollable paragraph
+        let paragraph = Paragraph::new(content).block(block).scroll((scroll, 0));
+        f.render_widget(paragraph, chunks[1]);
+
+        // Draw vertical scrollbar
+        f.render_stateful_widget(
+            Scrollbar::new(ScrollbarOrientation::VerticalRight)
+                .begin_symbol(Some("↑"))
+                .end_symbol(Some("↓")),
+            chunks[1],
+            &mut scroll_state,
+        );
+    } else {
+        // If no response, render a disabled box
+        let mut block = Block::default().borders(Borders::ALL).title("Response");
+        if let crate::app::CurrentScreen::Response = app.current_screen {
+            block = block.border_style(Style::default().fg(Color::Green));
+        }
+        let paragraph = Paragraph::new(vec![Line::from("No response yet.")]).block(block);
+        f.render_widget(paragraph, area);
     }
-
-    let response_output = Paragraph::new("Response output...")
-        .block(block);
-    f.render_widget(response_output, area);
 }

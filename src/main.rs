@@ -1,14 +1,12 @@
-use std::io;
 use anyhow::Result;
-use crossterm::event::{
-    self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode
-};
+use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode};
 use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
 };
 use ratatui::backend::{Backend, CrosstermBackend};
 use ratatui::Terminal;
+use std::io;
 
 mod app;
 use app::{App, CurrentScreen};
@@ -17,6 +15,7 @@ mod ui;
 use ui::ui;
 
 mod logic;
+use crate::logic::response::Response;
 use crate::logic::HttpMethod;
 
 #[tokio::main]
@@ -43,7 +42,6 @@ async fn main() -> Result<()> {
 }
 
 async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<bool> {
-
     loop {
         terminal.draw(|f| ui(f, app))?;
 
@@ -53,7 +51,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
             }
 
             match app.current_screen {
-                 CurrentScreen::Url | CurrentScreen::Values | CurrentScreen::Response => {
+                CurrentScreen::Url | CurrentScreen::Values | CurrentScreen::Response => {
                     if app.method_dropdown_open {
                         match key.code {
                             KeyCode::Up => {
@@ -86,39 +84,83 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                             _ => {}
                         }
                     } else {
-                        match key.code {
-                            // navigation between tabs
-                            KeyCode::Tab => {
-                                app.next_tab();
+                        if let KeyCode::Char('u') = key.code {
+                            app.current_screen = CurrentScreen::Editing;
+                        } else {
+                            match app.current_screen {
+                                CurrentScreen::Response => match key.code {
+                                    KeyCode::Left | KeyCode::Char('h') => {
+                                        app.response_tab_selected = 0;
+                                    }
+                                    KeyCode::Right | KeyCode::Char('b') => {
+                                        app.response_tab_selected = 1;
+                                    }
+                                    KeyCode::Up => {
+                                        app.current_screen = CurrentScreen::Values;
+                                    }
+                                    KeyCode::Char('j') => {
+                                        if app.response_tab_selected == 1 {
+                                            app.response_scroll =
+                                                app.response_scroll.saturating_add(1);
+                                        }
+                                    }
+                                    KeyCode::Char('k') => {
+                                        if app.response_tab_selected == 1 {
+                                            app.response_scroll =
+                                                app.response_scroll.saturating_sub(1);
+                                        }
+                                    }
+                                    _ => {}
+                                },
+                                CurrentScreen::Values => match key.code {
+                                    KeyCode::Down => {
+                                        app.current_screen = CurrentScreen::Response;
+                                    }
+                                    KeyCode::Up => {
+                                        app.current_screen = CurrentScreen::Url;
+                                    }
+                                    _ => {}
+                                },
+                                CurrentScreen::Url => match key.code {
+                                    KeyCode::Down => {
+                                        app.current_screen = CurrentScreen::Values;
+                                    }
+                                    _ => {}
+                                },
+                                _ => {}
                             }
-                            KeyCode::BackTab => {
-                                app.prev_tab();
-                            }
-                            KeyCode::Enter => {
-                                let response = app.tabs[app.selected_tab].request.send().await?;
-                            }
-                            KeyCode::Char('m') => {
-                                app.method_dropdown_open = true;
-                                app.method_dropdown_selected = match app.selected_method {
-                                    HttpMethod::GET => 0,
-                                    HttpMethod::POST => 1,
-                                    HttpMethod::PUT => 2,
-                                    HttpMethod::DELETE => 3,
-                                };
-                            }
-                            KeyCode::Char('q') => {
-                                app.current_screen = CurrentScreen::Exiting;
-                                return Ok(true);
-                            }
-                            KeyCode::Char('u') => {
-                                if let CurrentScreen::Url = app.current_screen {
-                                    app.current_screen = CurrentScreen::Editing;
+
+                            match key.code {
+                                KeyCode::Tab => {
+                                    app.next_tab();
                                 }
+                                KeyCode::BackTab => {
+                                    app.prev_tab();
+                                }
+                                KeyCode::Enter => {
+                                    let (status_code, headers, body) =
+                                        app.tabs[app.selected_tab].request.send().await?;
+                                    let response = Response::new(status_code, headers, body);
+                                    app.tabs[app.selected_tab].response = Some(response);
+                                }
+                                KeyCode::Char('m') => {
+                                    app.method_dropdown_open = true;
+                                    app.method_dropdown_selected = match app.selected_method {
+                                        HttpMethod::GET => 0,
+                                        HttpMethod::POST => 1,
+                                        HttpMethod::PUT => 2,
+                                        HttpMethod::DELETE => 3,
+                                    };
+                                }
+                                KeyCode::Char('q') => {
+                                    app.current_screen = CurrentScreen::Exiting;
+                                    return Ok(true);
+                                }
+                                _ => {}
                             }
-                            _ => {}
                         }
                     }
-                },
+                }
 
                 CurrentScreen::Editing => match key.code {
                     KeyCode::Enter => {
@@ -128,7 +170,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                     KeyCode::Backspace => {
                         app.url_input.pop();
                     }
-                   KeyCode::Esc => {
+                    KeyCode::Esc => {
                         app.current_screen = CurrentScreen::Url;
                     }
                     KeyCode::Char(c) => {

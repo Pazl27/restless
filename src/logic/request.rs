@@ -1,5 +1,5 @@
 use anyhow::Result;
-use reqwest::{Client, Method};
+use reqwest::{Client, Method, Response as ReqwestResponse};
 
 pub struct Request {
     pub url: String,
@@ -42,12 +42,12 @@ impl TryFrom<&Method> for HttpMethod {
 }
 
 impl Request {
-    pub async fn send(&self) -> Result<String> {
+    pub async fn send(&self) -> Result<(u16, String, String)> {
         send_request(self).await
     }
 }
 
-async fn send_request(req: &Request) -> Result<String> {
+pub async fn send_request(req: &Request) -> Result<(u16, String, String)> {
     let client = Client::new();
     let mut request_builder = client.request((&req.method).into(), &req.url);
 
@@ -55,20 +55,28 @@ async fn send_request(req: &Request) -> Result<String> {
         request_builder = request_builder.header(key, value);
     }
 
-    if !req.body.is_none() {
-        request_builder = request_builder.body(req.body.clone().unwrap_or_default());
+    if let Some(body) = &req.body {
+        request_builder = request_builder.body(body.clone());
     }
 
-    let response = request_builder.send().await?;
-    let text = response.text().await?;
-    Ok(text)
+    let response: ReqwestResponse = request_builder.send().await?;
+    let status_code = response.status().as_u16();
+    let headers = response
+        .headers()
+        .iter()
+        .map(|(k, v)| format!("{}: {}", k, v.to_str().unwrap_or("")))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let body = response.text().await?;
+
+    Ok((status_code, headers, body))
 }
 
 mod tests {
     use super::*;
 
     #[tokio::test]
-    async fn test_send_request() {
+    async fn test_send_request_get() {
         let req = Request {
             url: "http://httpbin.org/get".to_string(),
             method: Method::GET,
@@ -76,8 +84,41 @@ mod tests {
             body: None,
         };
 
-        let response = send_request(&req).await;
-        assert!(response.is_ok());
-        assert!(response.unwrap().contains("url"));
+        let response = send_request(&req).await.unwrap();
+        let (status, headers, body) = response;
+        assert_eq!(status, 200);
+        assert!(headers.contains("content-type"));
+        assert!(body.contains("\"url\""));
+    }
+
+    #[tokio::test]
+    async fn test_send_request_post_with_body() {
+        let req = Request {
+            url: "http://httpbin.org/post".to_string(),
+            method: Method::POST,
+            headers: vec![("Content-Type".to_string(), "application/json".to_string())],
+            body: Some("{\"foo\": \"bar\"}".to_string()),
+        };
+
+        let response = send_request(&req).await.unwrap();
+        let (status, headers, body) = response;
+        assert_eq!(status, 200);
+        assert!(headers.contains("content-type"));
+        assert!(body.contains("\"foo\": \"bar\""));
+    }
+
+    #[test]
+    fn test_http_method_conversion() {
+        let methods = [
+            HttpMethod::GET,
+            HttpMethod::POST,
+            HttpMethod::PUT,
+            HttpMethod::DELETE,
+        ];
+        for m in &methods {
+            let reqwest_method: Method = m.into();
+            let back = HttpMethod::try_from(&reqwest_method).unwrap();
+            assert_eq!(*m, back);
+        }
     }
 }
