@@ -51,10 +51,7 @@ pub struct App {
 impl App {
     pub fn new() -> App {
         let tabs = vec![
-            // Testing with some initial tabs
-            Tab::new("Tab 1".to_string(), "http://example.com".to_string()),
-            Tab::new("Tab 2".to_string(), "http://example.org".to_string()),
-            Tab::new("Tab 3".to_string(), "http://example.net".to_string()),
+            Tab::new("Tab 1".to_string(), String::new()),
         ];
         App {
             current_screen: CurrentScreen::Values,
@@ -123,6 +120,28 @@ impl App {
     pub fn remove_param(&mut self, index: usize) {
         if index < self.params_input.len() {
             self.params_input.remove(index);
+        }
+    }
+
+    pub fn add_new_tab(&mut self) {
+        self.save_current_tab_state();
+        let new_tab_number = self.tabs.len() + 1;
+        let new_tab = Tab::new(format!("Tab {}", new_tab_number), String::new());
+        self.tabs.push(new_tab);
+        self.selected_tab = self.tabs.len() - 1;
+        self.restore_current_tab_state();
+    }
+
+    pub fn close_current_tab(&mut self) {
+        if self.tabs.len() > 1 {
+            self.tabs.remove(self.selected_tab);
+            
+            // Adjust selected_tab if we removed the last tab
+            if self.selected_tab >= self.tabs.len() {
+                self.selected_tab = self.tabs.len() - 1;
+            }
+            
+            self.restore_current_tab_state();
         }
     }
 

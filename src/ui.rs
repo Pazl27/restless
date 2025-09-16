@@ -336,17 +336,17 @@ fn render_params_input_content(f: &mut Frame, app: &App, area: Rect) {
 fn render_help_bar(f: &mut Frame, app: &App, area: Rect) {
     let help_text = match app.current_screen {
         crate::app::CurrentScreen::Url => {
-            "u: Edit URL | m: Method | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute | q: Quit"
+            "u: Edit URL | m: Method | t: New tab | x: Close tab | Tab: Switch tabs | Ctrl+j/k: Navigate sections | Enter: Execute | q: Quit"
         }
         crate::app::CurrentScreen::Values => {
             match app.values_screen {
-                ValuesScreen::Body => "i: Insert body | h/l: Switch tabs | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
-                ValuesScreen::Headers => "i: Insert header | h/l: Switch tabs | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
-                ValuesScreen::Params => "i: Insert param | h/l: Switch tabs | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
+                ValuesScreen::Body => "i: Insert body | h/l: Switch tabs | t: New tab | x: Close tab | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
+                ValuesScreen::Headers => "i: Insert header | h/l: Switch tabs | t: New tab | x: Close tab | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
+                ValuesScreen::Params => "i: Insert param | h/l: Switch tabs | t: New tab | x: Close tab | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
             }
         }
         crate::app::CurrentScreen::Response => {
-            "j/k: Scroll | h/b: Headers/Body | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute | q: Quit"
+            "j/k: Scroll | h/b: Headers/Body | t: New tab | x: Close tab | Tab: Switch tabs | Ctrl+j/k: Navigate sections | Enter: Execute | q: Quit"
         }
         crate::app::CurrentScreen::EditingUrl => {
             "Type URL | Enter: Save | Esc: Cancel"

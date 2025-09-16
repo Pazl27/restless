@@ -137,6 +137,12 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                 app.current_screen = CurrentScreen::Exiting;
                                 return Ok(true);
                             }
+                            KeyCode::Char('t') => {
+                                app.add_new_tab();
+                            }
+                            KeyCode::Char('x') => {
+                                app.close_current_tab();
+                            }
                             KeyCode::Tab => {
                                 app.save_current_tab_state();
                                 app.selected_tab = (app.selected_tab + 1) % app.tabs.len();
