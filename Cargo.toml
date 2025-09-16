@@ -2,13 +2,22 @@
 name = "restless"
 version = "0.1.0"
 edition = "2021"
-authors = ["Pazl"]
-description = "A postman clone in the terminal"
-keywords = ["postman", "tui"]
-categories = ["command-line-utilities", "development-tools"]
+authors = ["Pazl <pazl@example.com>"]
+description = "A blazingly fast, keyboard-driven terminal user interface for testing REST APIs"
+documentation = "https://docs.rs/restless"
+homepage = "https://github.com/yourusername/restless"
+repository = "https://github.com/yourusername/restless"
+license = "MIT"
 readme = "README.md"
-repository = "https://github.com/yourusername/restles"
-# license = "MIT OR Apache-2.0"
+keywords = ["http", "rest", "api", "tui", "terminal"]
+categories = ["command-line-utilities", "development-tools", "web-programming"]
+include = [
+    "src/**/*",
+    "Cargo.toml",
+    "README.md",
+    "LICENSE",
+    "CONTRIBUTING.md"
+]
 
 [dependencies]
 anyhow = "1.0.98"
@@ -22,6 +31,17 @@ thiserror = "1.0"
 urlencoding = "2.1.3"
 atty = "0.2"
 
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
 [[bin]]
 name = "restless"
 path = "src/main.rs"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true
