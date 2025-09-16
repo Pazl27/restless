@@ -180,7 +180,6 @@ impl App {
             ("x", "Close current tab"),
             ("Tab", "Next tab"),
             ("Shift+Tab", "Previous tab"),
-            ("Ctrl+1/2/3", "Jump to specific tab"),
             ("", ""),
             ("Editing", ""),
             ("i", "Insert/edit mode (body/headers/params)"),

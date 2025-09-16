@@ -85,6 +85,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                         }
                     } else {
                         match key.code {
+
                             KeyCode::Char('u') => {
                                 app.current_screen = CurrentScreen::EditingUrl;
                             }
@@ -101,22 +102,6 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                     CurrentScreen::Values => CurrentScreen::Url,
                                     _ => app.current_screen,
                                 };
-                            }
-                            KeyCode::Char('1') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                app.selected_tab = 0;
-                                app.restore_current_tab_state();
-                            }
-                            KeyCode::Char('2') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                if app.tabs.len() > 1 {
-                                    app.selected_tab = 1;
-                                    app.restore_current_tab_state();
-                                }
-                            }
-                            KeyCode::Char('3') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                                if app.tabs.len() > 2 {
-                                    app.selected_tab = 2;
-                                    app.restore_current_tab_state();
-                                }
                             }
                             KeyCode::Enter => {
                                 let (status_code, headers, body) =
