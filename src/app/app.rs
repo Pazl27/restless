@@ -2,7 +2,7 @@ use crate::app::tab::Tab;
 use crate::logic::HttpMethod;
 use crate::error::{RestlessError, Result};
 
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum CurrentScreen {
     Url,
     Values,
@@ -16,7 +16,7 @@ pub enum CurrentScreen {
     Exiting,
 }
 
-#[derive(Eq, PartialEq, Copy, Clone)]
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
 pub enum ValuesScreen {
     Body,
     Headers,
@@ -92,7 +92,7 @@ impl App {
             if self.current_header_key.trim().is_empty() {
                 return Err(RestlessError::invalid_header("Header key cannot be empty"));
             }
-            
+
             if self.current_header_key.contains('\n') || self.current_header_key.contains('\r') {
                 return Err(RestlessError::invalid_header("Header key cannot contain newlines"));
             }
@@ -102,11 +102,11 @@ impl App {
                 if parts.len() == 2 {
                     let key = parts[0].trim().to_string();
                     let value = parts[1].trim().to_string();
-                    
+
                     if key.is_empty() {
                         return Err(RestlessError::invalid_header("Header key cannot be empty"));
                     }
-                    
+
                     self.headers_input.push((key, value));
                 }
             } else if !self.current_header_value.is_empty() {
@@ -134,21 +134,21 @@ impl App {
                 if parts.len() == 2 {
                     let key = parts[0].trim().to_string();
                     let value = parts[1].trim().to_string();
-                    
+
                     if key.is_empty() {
                         return Err(RestlessError::invalid_parameter("Parameter key cannot be empty"));
                     }
-                    
+
                     self.params_input.push((key, value));
                 }
             } else if !self.current_param_value.is_empty() {
                 let key = self.current_param_key.trim();
                 let value = self.current_param_value.trim();
-                
+
                 if key.is_empty() {
                     return Err(RestlessError::invalid_parameter("Parameter key cannot be empty"));
                 }
-                
+
                 self.params_input.push((key.to_string(), value.to_string()));
             }
             self.current_param_key.clear();
@@ -163,8 +163,8 @@ impl App {
             Ok(())
         } else {
             Err(RestlessError::app_state(format!(
-                "Cannot remove header at index {}: only {} headers exist", 
-                index, 
+                "Cannot remove header at index {}: only {} headers exist",
+                index,
                 self.headers_input.len()
             )))
         }
@@ -176,8 +176,8 @@ impl App {
             Ok(())
         } else {
             Err(RestlessError::app_state(format!(
-                "Cannot remove parameter at index {}: only {} parameters exist", 
-                index, 
+                "Cannot remove parameter at index {}: only {} parameters exist",
+                index,
                 self.params_input.len()
             )))
         }
@@ -187,16 +187,16 @@ impl App {
         if let Err(e) = self.save_current_tab_state() {
             return Err(RestlessError::tab(format!("Failed to save current tab state: {}", e)));
         }
-        
+
         let new_tab_number = self.tabs.len() + 1;
         let new_tab = Tab::new(format!("Tab {}", new_tab_number), String::new());
         self.tabs.push(new_tab);
         self.selected_tab = self.tabs.len() - 1;
-        
+
         if let Err(e) = self.restore_current_tab_state() {
             return Err(RestlessError::tab(format!("Failed to restore tab state: {}", e)));
         }
-        
+
         Ok(())
     }
 
@@ -204,15 +204,15 @@ impl App {
         if self.tabs.len() <= 1 {
             return Err(RestlessError::tab("Cannot close the last remaining tab"));
         }
-        
+
         if self.selected_tab >= self.tabs.len() {
             return Err(RestlessError::app_state(format!(
-                "Invalid tab index: {} (only {} tabs exist)", 
-                self.selected_tab, 
+                "Invalid tab index: {} (only {} tabs exist)",
+                self.selected_tab,
                 self.tabs.len()
             )));
         }
-        
+
         self.tabs.remove(self.selected_tab);
 
         // Adjust selected_tab if we removed the last tab
@@ -223,7 +223,7 @@ impl App {
         if let Err(e) = self.restore_current_tab_state() {
             return Err(RestlessError::tab(format!("Failed to restore tab state after closing: {}", e)));
         }
-        
+
         Ok(())
     }
 
@@ -248,14 +248,14 @@ impl App {
         if self.url_input.trim().is_empty() {
             return Err(RestlessError::invalid_url("URL cannot be empty"));
         }
-    
+
         if !self.url_input.starts_with("http://") && !self.url_input.starts_with("https://") {
             return Err(RestlessError::invalid_url(format!(
-                "URL must start with http:// or https://, got: {}", 
+                "URL must start with http:// or https://, got: {}",
                 self.url_input
             )));
         }
-    
+
         // Validate headers
         for (key, value) in &self.headers_input {
             if key.trim().is_empty() {
@@ -268,14 +268,14 @@ impl App {
                 return Err(RestlessError::invalid_header("Header value cannot contain newlines"));
             }
         }
-    
+
         // Validate parameters
         for (key, _) in &self.params_input {
             if key.trim().is_empty() {
                 return Err(RestlessError::invalid_parameter("Parameter key cannot be empty"));
             }
         }
-    
+
         Ok(())
     }
 
@@ -332,8 +332,8 @@ impl App {
             Ok(())
         } else {
             Err(RestlessError::app_state(format!(
-                "Cannot save state: invalid tab index {} (only {} tabs exist)", 
-                self.selected_tab, 
+                "Cannot save state: invalid tab index {} (only {} tabs exist)",
+                self.selected_tab,
                 self.tabs.len()
             )))
         }
@@ -350,8 +350,8 @@ impl App {
             Ok(())
         } else {
             Err(RestlessError::app_state(format!(
-                "Cannot restore state: invalid tab index {} (only {} tabs exist)", 
-                self.selected_tab, 
+                "Cannot restore state: invalid tab index {} (only {} tabs exist)",
+                self.selected_tab,
                 self.tabs.len()
             )))
         }
