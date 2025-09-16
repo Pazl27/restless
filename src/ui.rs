@@ -8,12 +8,17 @@ use ratatui::{
 
 use crate::app::{App, ValuesScreen};
 
-pub fn ui(f: &mut Frame, app: &mut App) {
+pub fn ui(f: &mut Frame, app: &mut App, error_message: &Option<String>) {
     render_content(f, app, f.area());
-    
+
     // Render help popup if visible
     if app.help_visible {
         render_help_popup(f, app);
+    }
+
+    // Render error popup if there's an error
+    if let Some(error) = error_message {
+        render_error_popup(f, error);
     }
 }
 
@@ -26,13 +31,13 @@ fn render_content(f: &mut Frame, app: &mut App, area: Rect) {
                 Constraint::Length(3), // URL input
                 Constraint::Min(5),    // Params/body/headers input
                 Constraint::Min(0),    // Response output
-                Constraint::Length(2), // Help bar
+                Constraint::Length(3), // Status/Error bar
             ]
             .as_ref(),
         )
         .split(area);
 
-    render_help_bar(f, app, content_chunks[4]);
+    render_status_bar(f, app, content_chunks[4]);
     render_response_output(f, app, content_chunks[3]);
     render_params_input(f, app, content_chunks[2]);
     render_url_input(f, app, content_chunks[1]);
@@ -208,7 +213,7 @@ fn render_body_input(f: &mut Frame, app: &App, area: Rect) {
     let content = if app.body_input.is_empty() {
         if let crate::app::CurrentScreen::Values = app.current_screen {
             if let ValuesScreen::Body = app.values_screen {
-                "Press 'i' to edit body...\n\nTip: Use JSON, XML, or plain text\nNavigation: Ctrl+j/k between sections, h/l for tabs".to_string()
+                "Press 'i' to edit body...\n\nTip: Use JSON, XML, or plain text".to_string()
             } else {
                 "Body (empty)".to_string()
             }
@@ -338,10 +343,19 @@ fn render_params_input_content(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(list, area);
 }
 
-fn render_help_bar(f: &mut Frame, _app: &App, area: Rect) {
-    let help_text = "Press ? for help";
+fn render_status_bar(f: &mut Frame, app: &App, area: Rect) {
+    let help_text = "Press ? for help | Enter: Send Request | q: Quit";
 
-    let help_paragraph = Paragraph::new(help_text)
+    // Show current tab info
+    let tab_info = if app.tabs.len() > 1 {
+        format!(" | Tab {}/{}", app.selected_tab + 1, app.tabs.len())
+    } else {
+        String::new()
+    };
+
+    let status_text = format!("{}{}", help_text, tab_info);
+
+    let help_paragraph = Paragraph::new(status_text)
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::TOP));
 
@@ -364,7 +378,7 @@ fn render_help_popup(f: &mut Frame, app: &App) {
     // Create help content
     let help_items = app.get_help_content();
     let mut lines = Vec::new();
-    
+
     for (key, description) in help_items.iter().skip(app.help_scroll) {
         if key.is_empty() && description.is_empty() {
             lines.push(Line::from(""));
@@ -415,6 +429,57 @@ fn render_help_popup(f: &mut Frame, app: &App) {
             .style(Style::default().fg(Color::Gray));
         f.render_widget(scroll_text, scroll_area);
     }
+}
+
+fn render_error_popup(f: &mut Frame, error_message: &str) {
+    // Calculate popup area (centered, smaller than help)
+    let area = f.area();
+    let popup_width = std::cmp::min(60, area.width * 3 / 4);
+    let popup_height = std::cmp::min(8, area.height / 3);
+
+    let popup_area = Rect {
+        x: (area.width.saturating_sub(popup_width)) / 2,
+        y: (area.height.saturating_sub(popup_height)) / 2,
+        width: popup_width,
+        height: popup_height,
+    };
+
+    // Clear the background
+    f.render_widget(Clear, popup_area);
+
+    // Create error content
+    let error_block = Block::default()
+        .title(" Error ")
+        .title_alignment(Alignment::Center)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Red));
+
+    // Wrap error message for display
+    let error_lines: Vec<Line> = error_message
+        .chars()
+        .collect::<Vec<char>>()
+        .chunks(popup_width.saturating_sub(4) as usize)
+        .map(|chunk| Line::from(chunk.iter().collect::<String>()))
+        .collect();
+
+    let error_paragraph = Paragraph::new(error_lines)
+        .block(error_block)
+        .wrap(ratatui::widgets::Wrap { trim: true })
+        .alignment(Alignment::Center);
+
+    f.render_widget(error_paragraph, popup_area);
+
+    // Add instruction to close
+    let instruction_area = Rect {
+        x: popup_area.x + 2,
+        y: popup_area.y + popup_area.height - 1,
+        width: popup_area.width - 4,
+        height: 1,
+    };
+    let instruction_text = Paragraph::new("Press any key to dismiss")
+        .style(Style::default().fg(Color::Gray))
+        .alignment(Alignment::Center);
+    f.render_widget(instruction_text, instruction_area);
 }
 
 fn render_response_output(f: &mut Frame, app: &App, area: Rect) {

@@ -1,5 +1,6 @@
 use crate::app::tab::Tab;
 use crate::logic::HttpMethod;
+use crate::error::{RestlessError, Result};
 
 #[derive(Eq, PartialEq, Copy, Clone)]
 pub enum CurrentScreen {
@@ -47,7 +48,7 @@ pub struct App {
     pub response_tab_selected: usize,
     pub response_scroll: usize,
     pub response_scroll_state: ratatui::widgets::ScrollbarState,
-    
+
     pub help_visible: bool,
     pub help_scroll: usize,
     pub previous_screen: CurrentScreen,
@@ -85,72 +86,145 @@ impl App {
         }
     }
 
-    pub fn add_header(&mut self) {
+    pub fn add_header(&mut self) -> Result<()> {
         if !self.current_header_key.is_empty() {
+            // Validate header key
+            if self.current_header_key.trim().is_empty() {
+                return Err(RestlessError::invalid_header("Header key cannot be empty"));
+            }
+            
+            if self.current_header_key.contains('\n') || self.current_header_key.contains('\r') {
+                return Err(RestlessError::invalid_header("Header key cannot contain newlines"));
+            }
+
             if self.current_header_key.contains(':') {
                 let parts: Vec<&str> = self.current_header_key.splitn(2, ':').collect();
                 if parts.len() == 2 {
                     let key = parts[0].trim().to_string();
                     let value = parts[1].trim().to_string();
+                    
+                    if key.is_empty() {
+                        return Err(RestlessError::invalid_header("Header key cannot be empty"));
+                    }
+                    
                     self.headers_input.push((key, value));
                 }
             } else if !self.current_header_value.is_empty() {
-                self.headers_input.push((self.current_header_key.clone(), self.current_header_value.clone()));
+                let value = self.current_header_value.trim();
+                if value.contains('\n') || value.contains('\r') {
+                    return Err(RestlessError::invalid_header("Header value cannot contain newlines"));
+                }
+                self.headers_input.push((self.current_header_key.clone(), value.to_string()));
             }
             self.current_header_key.clear();
             self.current_header_value.clear();
         }
+        Ok(())
     }
 
-    pub fn add_param(&mut self) {
+    pub fn add_param(&mut self) -> Result<()> {
         if !self.current_param_key.is_empty() {
+            // Validate parameter key
+            if self.current_param_key.trim().is_empty() {
+                return Err(RestlessError::invalid_parameter("Parameter key cannot be empty"));
+            }
+
             if self.current_param_key.contains('=') {
                 let parts: Vec<&str> = self.current_param_key.splitn(2, '=').collect();
                 if parts.len() == 2 {
                     let key = parts[0].trim().to_string();
                     let value = parts[1].trim().to_string();
+                    
+                    if key.is_empty() {
+                        return Err(RestlessError::invalid_parameter("Parameter key cannot be empty"));
+                    }
+                    
                     self.params_input.push((key, value));
                 }
             } else if !self.current_param_value.is_empty() {
-                self.params_input.push((self.current_param_key.clone(), self.current_param_value.clone()));
+                let key = self.current_param_key.trim();
+                let value = self.current_param_value.trim();
+                
+                if key.is_empty() {
+                    return Err(RestlessError::invalid_parameter("Parameter key cannot be empty"));
+                }
+                
+                self.params_input.push((key.to_string(), value.to_string()));
             }
             self.current_param_key.clear();
             self.current_param_value.clear();
         }
+        Ok(())
     }
 
-    pub fn remove_header(&mut self, index: usize) {
+    pub fn remove_header(&mut self, index: usize) -> Result<()> {
         if index < self.headers_input.len() {
             self.headers_input.remove(index);
+            Ok(())
+        } else {
+            Err(RestlessError::app_state(format!(
+                "Cannot remove header at index {}: only {} headers exist", 
+                index, 
+                self.headers_input.len()
+            )))
         }
     }
 
-    pub fn remove_param(&mut self, index: usize) {
+    pub fn remove_param(&mut self, index: usize) -> Result<()> {
         if index < self.params_input.len() {
             self.params_input.remove(index);
+            Ok(())
+        } else {
+            Err(RestlessError::app_state(format!(
+                "Cannot remove parameter at index {}: only {} parameters exist", 
+                index, 
+                self.params_input.len()
+            )))
         }
     }
 
-    pub fn add_new_tab(&mut self) {
-        self.save_current_tab_state();
+    pub fn add_new_tab(&mut self) -> Result<()> {
+        if let Err(e) = self.save_current_tab_state() {
+            return Err(RestlessError::tab(format!("Failed to save current tab state: {}", e)));
+        }
+        
         let new_tab_number = self.tabs.len() + 1;
         let new_tab = Tab::new(format!("Tab {}", new_tab_number), String::new());
         self.tabs.push(new_tab);
         self.selected_tab = self.tabs.len() - 1;
-        self.restore_current_tab_state();
+        
+        if let Err(e) = self.restore_current_tab_state() {
+            return Err(RestlessError::tab(format!("Failed to restore tab state: {}", e)));
+        }
+        
+        Ok(())
     }
 
-    pub fn close_current_tab(&mut self) {
-        if self.tabs.len() > 1 {
-            self.tabs.remove(self.selected_tab);
-            
-            // Adjust selected_tab if we removed the last tab
-            if self.selected_tab >= self.tabs.len() {
-                self.selected_tab = self.tabs.len() - 1;
-            }
-            
-            self.restore_current_tab_state();
+    pub fn close_current_tab(&mut self) -> Result<()> {
+        if self.tabs.len() <= 1 {
+            return Err(RestlessError::tab("Cannot close the last remaining tab"));
         }
+        
+        if self.selected_tab >= self.tabs.len() {
+            return Err(RestlessError::app_state(format!(
+                "Invalid tab index: {} (only {} tabs exist)", 
+                self.selected_tab, 
+                self.tabs.len()
+            )));
+        }
+        
+        self.tabs.remove(self.selected_tab);
+
+        // Adjust selected_tab if we removed the last tab
+        if self.selected_tab >= self.tabs.len() {
+            self.selected_tab = self.tabs.len() - 1;
+        }
+
+        if let Err(e) = self.restore_current_tab_state() {
+            return Err(RestlessError::tab(format!("Failed to restore tab state after closing: {}", e)));
+        }
+        
+        Ok(())
     }
 
     pub fn show_help(&mut self) {
@@ -166,6 +240,56 @@ impl App {
         if self.help_visible {
             self.current_screen = self.previous_screen;
             self.help_visible = false;
+        }
+    }
+
+    pub fn validate_current_request(&self) -> Result<()> {
+        // Validate URL
+        if self.url_input.trim().is_empty() {
+            return Err(RestlessError::invalid_url("URL cannot be empty"));
+        }
+    
+        if !self.url_input.starts_with("http://") && !self.url_input.starts_with("https://") {
+            return Err(RestlessError::invalid_url(format!(
+                "URL must start with http:// or https://, got: {}", 
+                self.url_input
+            )));
+        }
+    
+        // Validate headers
+        for (key, value) in &self.headers_input {
+            if key.trim().is_empty() {
+                return Err(RestlessError::invalid_header("Header key cannot be empty"));
+            }
+            if key.contains('\n') || key.contains('\r') {
+                return Err(RestlessError::invalid_header("Header key cannot contain newlines"));
+            }
+            if value.contains('\n') || value.contains('\r') {
+                return Err(RestlessError::invalid_header("Header value cannot contain newlines"));
+            }
+        }
+    
+        // Validate parameters
+        for (key, _) in &self.params_input {
+            if key.trim().is_empty() {
+                return Err(RestlessError::invalid_parameter("Parameter key cannot be empty"));
+            }
+        }
+    
+        Ok(())
+    }
+
+    pub fn get_error_message(&self, error: &RestlessError) -> String {
+        match error {
+            RestlessError::Network(e) => format!("Network Error: {}", e),
+            RestlessError::InvalidUrl { url } => format!("Invalid URL: {}", url),
+            RestlessError::InvalidHeader { header } => format!("Invalid Header: {}", header),
+            RestlessError::InvalidParameter { param } => format!("Invalid Parameter: {}", param),
+            RestlessError::Timeout => "Request timed out".to_string(),
+            RestlessError::Tab { message } => format!("Tab Error: {}", message),
+            RestlessError::ResponseParsing { message } => format!("Response Error: {}", message),
+            RestlessError::AppState { message } => format!("App Error: {}", message),
+            _ => format!("Error: {}", error),
         }
     }
 
@@ -198,39 +322,56 @@ impl App {
         ]
     }
 
-    pub fn save_current_tab_state(&mut self) {
+    pub fn save_current_tab_state(&mut self) -> Result<()> {
         if let Some(tab) = self.tabs.get_mut(self.selected_tab) {
             tab.request.url = self.url_input.clone();
             tab.request.method = (&self.selected_method).into();
             tab.request.body = if self.body_input.is_empty() { None } else { Some(self.body_input.clone()) };
             tab.request.headers = self.headers_input.clone();
             tab.request.params = self.params_input.clone();
+            Ok(())
+        } else {
+            Err(RestlessError::app_state(format!(
+                "Cannot save state: invalid tab index {} (only {} tabs exist)", 
+                self.selected_tab, 
+                self.tabs.len()
+            )))
         }
     }
 
-    pub fn restore_current_tab_state(&mut self) {
+    pub fn restore_current_tab_state(&mut self) -> Result<()> {
         if let Some(tab) = self.tabs.get(self.selected_tab) {
             self.url_input = tab.request.url.clone();
-            self.selected_method = HttpMethod::try_from(&tab.request.method).unwrap_or(HttpMethod::GET);
+            self.selected_method = HttpMethod::try_from(&tab.request.method)
+                .map_err(|e| RestlessError::app_state(format!("Invalid HTTP method in tab: {}", e)))?;
             self.body_input = tab.request.body.clone().unwrap_or_default();
             self.headers_input = tab.request.headers.clone();
             self.params_input = tab.request.params.clone();
+            Ok(())
+        } else {
+            Err(RestlessError::app_state(format!(
+                "Cannot restore state: invalid tab index {} (only {} tabs exist)", 
+                self.selected_tab, 
+                self.tabs.len()
+            )))
         }
     }
 
-    pub fn next_tab(&mut self) {
-        self.save_current_tab_state();
+    pub fn next_tab(&mut self) -> Result<()> {
+        self.save_current_tab_state()?;
         self.selected_tab = (self.selected_tab + 1) % self.tabs.len();
-        self.restore_current_tab_state();
+        self.restore_current_tab_state()?;
+        Ok(())
     }
 
-    pub fn prev_tab(&mut self) {
-        self.save_current_tab_state();
+    pub fn prev_tab(&mut self) -> Result<()> {
+        self.save_current_tab_state()?;
         if self.selected_tab == 0 {
             self.selected_tab = self.tabs.len() - 1;
         } else {
             self.selected_tab -= 1;
         }
-        self.restore_current_tab_state();
+        self.restore_current_tab_state()?;
+        Ok(())
     }
 }

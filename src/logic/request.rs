@@ -1,5 +1,6 @@
 use anyhow::Result;
 use reqwest::{Client, Method, Response as ReqwestResponse};
+use crate::error::{RestlessError, RequestError};
 
 pub struct Request {
     pub url: String,
@@ -29,7 +30,7 @@ impl From<&HttpMethod> for Method {
 }
 
 impl TryFrom<&Method> for HttpMethod {
-    type Error = ();
+    type Error = RestlessError;
 
     fn try_from(method: &Method) -> Result<Self, Self::Error> {
         match *method {
@@ -37,27 +38,121 @@ impl TryFrom<&Method> for HttpMethod {
             Method::POST => Ok(HttpMethod::POST),
             Method::PUT => Ok(HttpMethod::PUT),
             Method::DELETE => Ok(HttpMethod::DELETE),
-            _ => Err(()),
+            _ => Err(RestlessError::invalid_http_method(format!("{}", method))),
         }
     }
 }
 
 impl Request {
     pub async fn send(&self) -> Result<(u16, String, String)> {
-        send_request(self).await
+        send_request(self).await.map_err(|e| e.into())
+    }
+
+    pub fn validate_url(&self) -> Result<(), RequestError> {
+        if self.url.is_empty() {
+            return Err(RequestError::invalid_url("URL cannot be empty"));
+        }
+        
+        if !self.url.starts_with("http://") && !self.url.starts_with("https://") {
+            return Err(RequestError::invalid_url(format!(
+                "URL must start with http:// or https://, got: {}", 
+                self.url
+            )));
+        }
+        
+        Ok(())
+    }
+
+    pub fn validate_headers(&self) -> Result<(), RequestError> {
+        for (key, value) in &self.headers {
+            if key.is_empty() {
+                return Err(RequestError::invalid_header(key.clone(), "Header key cannot be empty".to_string()));
+            }
+            if key.contains('\n') || key.contains('\r') {
+                return Err(RequestError::invalid_header(key.clone(), "Header key cannot contain newlines".to_string()));
+            }
+            if value.contains('\n') || value.contains('\r') {
+                return Err(RequestError::invalid_header(key.clone(), "Header value cannot contain newlines".to_string()));
+            }
+        }
+        Ok(())
     }
 }
 
-pub async fn send_request(req: &Request) -> Result<(u16, String, String)> {
-    let client = Client::new();
+pub async fn send_request(req: &Request) -> Result<(u16, String, String), RequestError> {
+    // Validate request before sending
+    req.validate_url()?;
+    req.validate_headers()?;
+    
+    let client = Client::builder()
+        .timeout(std::time::Duration::from_secs(30))
+        .build()
+        .map_err(|e| RequestError::connection(format!("Failed to create HTTP client: {}", e)))?;
     
     // Build URL with query parameters
-    let mut url = req.url.clone();
-    if !req.params.is_empty() {
-        let query_string: String = req.params
+    let url = build_url_with_params(&req.url, &req.params)?;
+    
+    let mut request_builder = client.request((&req.method).into(), &url);
+
+    // Add headers with validation
+    for (key, value) in &req.headers {
+        request_builder = request_builder.header(key, value);
+    }
+
+    // Add body if present
+    if let Some(body) = &req.body {
+        request_builder = request_builder.body(body.clone());
+    }
+
+    // Send request with proper error handling
+    let response: ReqwestResponse = request_builder
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_timeout() {
+                RequestError::timeout(30)
+            } else if e.is_connect() {
+                RequestError::connection(format!("Connection failed: {}", e))
+            } else {
+                RequestError::Http(e)
+            }
+        })?;
+
+    let status_code = response.status().as_u16();
+    
+    // Parse headers with error handling
+    let headers = response
+        .headers()
+        .iter()
+        .map(|(k, v)| {
+            let value_str = v.to_str().unwrap_or("<invalid-header-value>");
+            format!("{}: {}", k, value_str)
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    
+    // Get body with error handling
+    let body = response
+        .text()
+        .await
+        .map_err(|e| RequestError::Http(e))?;
+
+    Ok((status_code, headers, body))
+}
+
+fn build_url_with_params(base_url: &str, params: &[(String, String)]) -> Result<String, RequestError> {
+    let mut url = base_url.to_string();
+    
+    if !params.is_empty() {
+        let query_string: String = params
             .iter()
-            .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
-            .collect::<Vec<_>>()
+            .map(|(k, v)| {
+                if k.is_empty() {
+                    return Err(RequestError::invalid_header(k.clone(), "Parameter key cannot be empty".to_string()));
+                }
+                Ok(format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
+            })
+            .collect::<Result<Vec<_>, RequestError>>()?
             .join("&");
         
         if url.contains('?') {
@@ -68,29 +163,10 @@ pub async fn send_request(req: &Request) -> Result<(u16, String, String)> {
         url.push_str(&query_string);
     }
     
-    let mut request_builder = client.request((&req.method).into(), &url);
-
-    for (key, value) in &req.headers {
-        request_builder = request_builder.header(key, value);
-    }
-
-    if let Some(body) = &req.body {
-        request_builder = request_builder.body(body.clone());
-    }
-
-    let response: ReqwestResponse = request_builder.send().await?;
-    let status_code = response.status().as_u16();
-    let headers = response
-        .headers()
-        .iter()
-        .map(|(k, v)| format!("{}: {}", k, v.to_str().unwrap_or("")))
-        .collect::<Vec<_>>()
-        .join("\n");
-    let body = response.text().await?;
-
-    Ok((status_code, headers, body))
+    Ok(url)
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
 

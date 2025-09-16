@@ -15,38 +15,83 @@ mod ui;
 use ui::ui;
 
 mod logic;
+mod error;
 use crate::logic::response::Response;
 use crate::logic::HttpMethod;
+use crate::error::RestlessError;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    enable_raw_mode()?;
+    // Initialize terminal with error handling
+    if let Err(e) = setup_terminal().await {
+        eprintln!("Failed to initialize terminal: {}", e);
+        std::process::exit(1);
+    }
+    
+    Ok(())
+}
+
+async fn setup_terminal() -> Result<()> {
+    enable_raw_mode()
+        .map_err(|e| RestlessError::terminal(format!("Failed to enable raw mode: {}", e)))?;
+    
     let mut stderr = io::stderr();
-    execute!(stderr, EnterAlternateScreen, EnableMouseCapture)?;
+    execute!(stderr, EnterAlternateScreen, EnableMouseCapture)
+        .map_err(|e| RestlessError::terminal(format!("Failed to setup terminal: {}", e)))?;
 
     let backend = CrosstermBackend::new(stderr);
-    let mut terminal = Terminal::new(backend)?;
+    let mut terminal = Terminal::new(backend)
+        .map_err(|e| RestlessError::terminal(format!("Failed to create terminal: {}", e)))?;
 
     let mut app = App::new();
-    run_app(&mut terminal, &mut app).await?;
+    
+    // Run the app with error handling
+    let run_result = run_app(&mut terminal, &mut app).await;
+    
+    // Always cleanup terminal, even if the app failed
+    let cleanup_result = cleanup_terminal(&mut terminal);
+    
+    // Return the first error if any occurred
+    match (run_result, cleanup_result) {
+        (Err(e), _) => Err(e),
+        (Ok(_), Err(e)) => Err(e),
+        (Ok(success), Ok(_)) => Ok(success),
+    }
+}
 
-    disable_raw_mode()?;
+fn cleanup_terminal<B: Backend + std::io::Write>(terminal: &mut Terminal<B>) -> Result<()> {
+    disable_raw_mode()
+        .map_err(|e| RestlessError::terminal(format!("Failed to disable raw mode: {}", e)))?;
+    
     execute!(
         terminal.backend_mut(),
         DisableMouseCapture,
         LeaveAlternateScreen
-    )?;
-    terminal.show_cursor()?;
-
+    ).map_err(|e| RestlessError::terminal(format!("Failed to cleanup terminal: {}", e)))?;
+    
+    terminal.show_cursor()
+        .map_err(|e| RestlessError::terminal(format!("Failed to show cursor: {}", e)))?;
+    
     Ok(())
 }
 
-async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<bool> {
+async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<()> {
+    // Store any error message to display to the user
+    let mut error_message: Option<String> = None;
+    
     loop {
-        terminal.draw(|f| ui(f, app))?;
+        // Pass error message to UI for display
+        terminal.draw(|f| ui(f, app, &error_message))
+            .map_err(|e| RestlessError::terminal(format!("Failed to draw UI: {}", e)))?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == event::KeyEventKind::Release {
+                continue;
+            }
+
+            // If there's an error message, any key press dismisses it
+            if error_message.is_some() {
+                error_message = None;
                 continue;
             }
 
@@ -104,10 +149,34 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                 };
                             }
                             KeyCode::Enter => {
-                                let (status_code, headers, body) =
-                                    app.tabs[app.selected_tab].request.send().await?;
-                                let response = Response::new(status_code, headers, body);
-                                app.tabs[app.selected_tab].response = Some(response);
+                                // Clear any previous error
+                                error_message = None;
+                                
+                                // Validate request before sending
+                                if let Err(e) = app.validate_current_request() {
+                                    error_message = Some(app.get_error_message(&e));
+                                    continue;
+                                }
+                                
+                                // Send request with error handling
+                                match app.tabs[app.selected_tab].request.send().await {
+                                    Ok((status_code, headers, body)) => {
+                                        match Response::new(status_code, headers.clone(), body.clone()) {
+                                            Ok(response) => {
+                                                app.tabs[app.selected_tab].response = Some(response);
+                                            }
+                                            Err(e) => {
+                                                error_message = Some(format!("Response parsing error: {}", e));
+                                                // Still create response with unchecked method for display
+                                                let response = Response::new_unchecked(status_code, headers, body);
+                                                app.tabs[app.selected_tab].response = Some(response);
+                                            }
+                                        }
+                                    }
+                                    Err(e) => {
+                                        error_message = Some(format!("Request failed: {}", e));
+                                    }
+                                }
                             }
                             KeyCode::Char('m') => {
                                 app.method_dropdown_open = true;
@@ -120,28 +189,28 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                             }
                             KeyCode::Char('q') => {
                                 app.current_screen = CurrentScreen::Exiting;
-                                return Ok(true);
+                                return Ok(());
                             }
 
                             KeyCode::Char('t') => {
-                                app.add_new_tab();
+                                if let Err(e) = app.add_new_tab() {
+                                    error_message = Some(app.get_error_message(&e));
+                                }
                             }
                             KeyCode::Char('x') => {
-                                app.close_current_tab();
+                                if let Err(e) = app.close_current_tab() {
+                                    error_message = Some(app.get_error_message(&e));
+                                }
                             }
                             KeyCode::Tab => {
-                                app.save_current_tab_state();
-                                app.selected_tab = (app.selected_tab + 1) % app.tabs.len();
-                                app.restore_current_tab_state();
+                                if let Err(e) = app.next_tab() {
+                                    error_message = Some(app.get_error_message(&e));
+                                }
                             }
                             KeyCode::BackTab => {
-                                app.save_current_tab_state();
-                                if app.selected_tab == 0 {
-                                    app.selected_tab = app.tabs.len() - 1;
-                                } else {
-                                    app.selected_tab -= 1;
+                                if let Err(e) = app.prev_tab() {
+                                    error_message = Some(app.get_error_message(&e));
                                 }
-                                app.restore_current_tab_state();
                             }
                             _ => {}
                         }
@@ -266,7 +335,9 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                 CurrentScreen::EditingHeaders => match key.code {
                     KeyCode::Enter => {
                         if !app.current_header_key.is_empty() {
-                            app.add_header();
+                            if let Err(e) = app.add_header() {
+                                error_message = Some(app.get_error_message(&e));
+                            }
                         } else {
                             app.current_screen = CurrentScreen::Values;
                         }
@@ -318,7 +389,9 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                 CurrentScreen::EditingParams => match key.code {
                     KeyCode::Enter => {
                         if !app.current_param_key.is_empty() {
-                            app.add_param();
+                            if let Err(e) = app.add_param() {
+                                error_message = Some(app.get_error_message(&e));
+                            }
                         } else {
                             app.current_screen = CurrentScreen::Values;
                         }
