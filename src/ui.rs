@@ -21,11 +21,13 @@ fn render_content(f: &mut Frame, app: &mut App, area: Rect) {
                 Constraint::Length(3), // URL input
                 Constraint::Min(5),    // Params/body/headers input
                 Constraint::Min(0),    // Response output
+                Constraint::Length(2), // Help bar
             ]
             .as_ref(),
         )
         .split(area);
 
+    render_help_bar(f, app, content_chunks[4]);
     render_response_output(f, app, content_chunks[3]);
     render_params_input(f, app, content_chunks[2]);
     render_url_input(f, app, content_chunks[1]);
@@ -146,7 +148,7 @@ fn render_params_input(f: &mut Frame, app: &App, area: Rect) {
         width: area.width,
         height: 3,
     };
-    
+
     let content_area = Rect {
         x: area.x,
         y: area.y + 3,
@@ -157,10 +159,10 @@ fn render_params_input(f: &mut Frame, app: &App, area: Rect) {
     // Render tabs
     let titles = vec![
         Line::from("Body"),
-        Line::from("Headers"), 
+        Line::from("Headers"),
         Line::from("Params")
     ];
-    
+
     let selected_tab = match app.values_screen {
         ValuesScreen::Body => 0,
         ValuesScreen::Headers => 1,
@@ -172,7 +174,7 @@ fn render_params_input(f: &mut Frame, app: &App, area: Rect) {
         .highlight_style(Style::default().fg(Color::Yellow))
         .divider(" ")
         .padding("", "");
-    
+
     f.render_widget(tabs, tabs_area);
 
     // Render content based on selected tab
@@ -201,7 +203,7 @@ fn render_body_input(f: &mut Frame, app: &App, area: Rect) {
     let content = if app.body_input.is_empty() {
         if let crate::app::CurrentScreen::Values = app.current_screen {
             if let ValuesScreen::Body = app.values_screen {
-                "Press 'e' to edit body...\n\nTip: Use JSON, XML, or plain text".to_string()
+                "Press 'i' to edit body...\n\nTip: Use JSON, XML, or plain text\nNavigation: Ctrl+j/k between sections, h/l for tabs".to_string()
             } else {
                 "Body (empty)".to_string()
             }
@@ -262,9 +264,10 @@ fn render_headers_input(f: &mut Frame, app: &App, area: Rect) {
     } else if items.is_empty() {
         if let crate::app::CurrentScreen::Values = app.current_screen {
             if let ValuesScreen::Headers = app.values_screen {
-                items.push(ListItem::new(Line::from("Press 'e' to add headers...")));
+                items.push(ListItem::new(Line::from("Press 'i' to add headers...")));
                 items.push(ListItem::new(Line::from("Format: Key: Value")));
                 items.push(ListItem::new(Line::from("Example: Content-Type: application/json")));
+                items.push(ListItem::new(Line::from("Use h/l to switch tabs")));
             } else {
                 items.push(ListItem::new(Line::from("No headers")));
             }
@@ -314,9 +317,10 @@ fn render_params_input_content(f: &mut Frame, app: &App, area: Rect) {
     } else if items.is_empty() {
         if let crate::app::CurrentScreen::Values = app.current_screen {
             if let ValuesScreen::Params = app.values_screen {
-                items.push(ListItem::new(Line::from("Press 'e' to add parameters...")));
+                items.push(ListItem::new(Line::from("Press 'i' to add parameters...")));
                 items.push(ListItem::new(Line::from("Format: key=value")));
                 items.push(ListItem::new(Line::from("Example: limit=10")));
+                items.push(ListItem::new(Line::from("Use h/l to switch tabs")));
             } else {
                 items.push(ListItem::new(Line::from("No parameters")));
             }
@@ -327,6 +331,43 @@ fn render_params_input_content(f: &mut Frame, app: &App, area: Rect) {
 
     let list = List::new(items).block(block);
     f.render_widget(list, area);
+}
+
+fn render_help_bar(f: &mut Frame, app: &App, area: Rect) {
+    let help_text = match app.current_screen {
+        crate::app::CurrentScreen::Url => {
+            "u: Edit URL | m: Method | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute | q: Quit"
+        }
+        crate::app::CurrentScreen::Values => {
+            match app.values_screen {
+                ValuesScreen::Body => "i: Insert body | h/l: Switch tabs | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
+                ValuesScreen::Headers => "i: Insert header | h/l: Switch tabs | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
+                ValuesScreen::Params => "i: Insert param | h/l: Switch tabs | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
+            }
+        }
+        crate::app::CurrentScreen::Response => {
+            "j/k: Scroll | h/b: Headers/Body | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute | q: Quit"
+        }
+        crate::app::CurrentScreen::EditingUrl => {
+            "Type URL | Enter: Save | Esc: Cancel"
+        }
+        crate::app::CurrentScreen::EditingBody => {
+            "Type body content | Enter: New line | Esc: Finish editing"
+        }
+        crate::app::CurrentScreen::EditingHeaders => {
+            "Format: Key: Value | Enter: Add header | Esc: Finish editing"
+        }
+        crate::app::CurrentScreen::EditingParams => {
+            "Format: key=value | Enter: Add param | Esc: Finish editing"
+        }
+        _ => "q: Quit application"
+    };
+
+    let help_paragraph = Paragraph::new(help_text)
+        .style(Style::default().fg(Color::Gray))
+        .block(Block::default().borders(Borders::TOP));
+
+    f.render_widget(help_paragraph, area);
 }
 
 fn render_response_output(f: &mut Frame, app: &App, area: Rect) {

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode};
+use crossterm::event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers};
 use crossterm::execute;
 use crossterm::terminal::{
     disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen,
@@ -84,107 +84,130 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                             _ => {}
                         }
                     } else {
-                        if let KeyCode::Char('u') = key.code {
-                            app.current_screen = CurrentScreen::EditingUrl;
-                        } else {
-                            match app.current_screen {
-                                CurrentScreen::Response => match key.code {
-                                    KeyCode::Left | KeyCode::Char('h') => {
-                                        app.response_tab_selected = 0;
-                                    }
-                                    KeyCode::Right | KeyCode::Char('b') => {
-                                        app.response_tab_selected = 1;
-                                    }
-                                    KeyCode::Up => {
-                                        app.current_screen = CurrentScreen::Values;
-                                    }
-                                    KeyCode::Char('j') => {
-                                        if app.response_tab_selected == 1 {
-                                            app.response_scroll =
-                                                app.response_scroll.saturating_add(1);
-                                        }
-                                    }
-                                    KeyCode::Char('k') => {
-                                        if app.response_tab_selected == 1 {
-                                            app.response_scroll =
-                                                app.response_scroll.saturating_sub(1);
-                                        }
-                                    }
-                                    _ => {}
-                                },
-                                CurrentScreen::Values => match key.code {
-                                    KeyCode::Down => {
-                                        app.current_screen = CurrentScreen::Response;
-                                    }
-                                    KeyCode::Up => {
-                                        app.current_screen = CurrentScreen::Url;
-                                    }
-                                    KeyCode::Left | KeyCode::Char('h') => {
-                                        app.values_screen = match app.values_screen {
-                                            ValuesScreen::Headers => ValuesScreen::Body,
-                                            ValuesScreen::Params => ValuesScreen::Headers,
-                                            _ => app.values_screen,
-                                        };
-                                    }
-                                    KeyCode::Right | KeyCode::Char('l') => {
-                                        app.values_screen = match app.values_screen {
-                                            ValuesScreen::Body => ValuesScreen::Headers,
-                                            ValuesScreen::Headers => ValuesScreen::Params,
-                                            _ => app.values_screen,
-                                        };
-                                    }
-                                    KeyCode::Char('e') => {
-                                        match app.values_screen {
-                                            ValuesScreen::Body => {
-                                                app.current_screen = CurrentScreen::EditingBody;
-                                            }
-                                            ValuesScreen::Headers => {
-                                                app.current_screen = CurrentScreen::EditingHeaders;
-                                            }
-                                            ValuesScreen::Params => {
-                                                app.current_screen = CurrentScreen::EditingParams;
-                                            }
-                                        }
-                                    }
-                                    _ => {}
-                                },
-                                CurrentScreen::Url => match key.code {
-                                    KeyCode::Down => {
-                                        app.current_screen = CurrentScreen::Values;
-                                    }
-                                    _ => {}
-                                },
-                                _ => {}
+                        match key.code {
+                            KeyCode::Char('u') => {
+                                app.current_screen = CurrentScreen::EditingUrl;
                             }
+                            KeyCode::Char('j') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                app.current_screen = match app.current_screen {
+                                    CurrentScreen::Url => CurrentScreen::Values,
+                                    CurrentScreen::Values => CurrentScreen::Response,
+                                    _ => app.current_screen,
+                                };
+                            }
+                            KeyCode::Char('k') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                app.current_screen = match app.current_screen {
+                                    CurrentScreen::Response => CurrentScreen::Values,
+                                    CurrentScreen::Values => CurrentScreen::Url,
+                                    _ => app.current_screen,
+                                };
+                            }
+                            KeyCode::Char('1') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                app.selected_tab = 0;
+                                app.restore_current_tab_state();
+                            }
+                            KeyCode::Char('2') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                if app.tabs.len() > 1 {
+                                    app.selected_tab = 1;
+                                    app.restore_current_tab_state();
+                                }
+                            }
+                            KeyCode::Char('3') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                                if app.tabs.len() > 2 {
+                                    app.selected_tab = 2;
+                                    app.restore_current_tab_state();
+                                }
+                            }
+                            KeyCode::Enter => {
+                                let (status_code, headers, body) =
+                                    app.tabs[app.selected_tab].request.send().await?;
+                                let response = Response::new(status_code, headers, body);
+                                app.tabs[app.selected_tab].response = Some(response);
+                            }
+                            KeyCode::Char('m') => {
+                                app.method_dropdown_open = true;
+                                app.method_dropdown_selected = match app.selected_method {
+                                    HttpMethod::GET => 0,
+                                    HttpMethod::POST => 1,
+                                    HttpMethod::PUT => 2,
+                                    HttpMethod::DELETE => 3,
+                                };
+                            }
+                            KeyCode::Char('q') => {
+                                app.current_screen = CurrentScreen::Exiting;
+                                return Ok(true);
+                            }
+                            KeyCode::Tab => {
+                                app.save_current_tab_state();
+                                app.selected_tab = (app.selected_tab + 1) % app.tabs.len();
+                                app.restore_current_tab_state();
+                            }
+                            KeyCode::BackTab => {
+                                app.save_current_tab_state();
+                                if app.selected_tab == 0 {
+                                    app.selected_tab = app.tabs.len() - 1;
+                                } else {
+                                    app.selected_tab -= 1;
+                                }
+                                app.restore_current_tab_state();
+                            }
+                            _ => {}
+                        }
 
-                            match key.code {
-                                KeyCode::Tab => {
-                                    app.next_tab();
+                        // Screen-specific key handling
+                        match app.current_screen {
+                            CurrentScreen::Response => match key.code {
+                                KeyCode::Left | KeyCode::Char('h') => {
+                                    app.response_tab_selected = 0;
                                 }
-                                KeyCode::BackTab => {
-                                    app.prev_tab();
+                                KeyCode::Right | KeyCode::Char('b') => {
+                                    app.response_tab_selected = 1;
                                 }
-                                KeyCode::Enter => {
-                                    let (status_code, headers, body) =
-                                        app.tabs[app.selected_tab].request.send().await?;
-                                    let response = Response::new(status_code, headers, body);
-                                    app.tabs[app.selected_tab].response = Some(response);
+                                KeyCode::Char('j') => {
+                                    if app.response_tab_selected == 1 {
+                                        app.response_scroll =
+                                            app.response_scroll.saturating_add(1);
+                                    }
                                 }
-                                KeyCode::Char('m') => {
-                                    app.method_dropdown_open = true;
-                                    app.method_dropdown_selected = match app.selected_method {
-                                        HttpMethod::GET => 0,
-                                        HttpMethod::POST => 1,
-                                        HttpMethod::PUT => 2,
-                                        HttpMethod::DELETE => 3,
+                                KeyCode::Char('k') => {
+                                    if app.response_tab_selected == 1 {
+                                        app.response_scroll =
+                                            app.response_scroll.saturating_sub(1);
+                                    }
+                                }
+                                _ => {}
+                            },
+                            CurrentScreen::Values => match key.code {
+                                KeyCode::Char('h') | KeyCode::Left => {
+                                    app.values_screen = match app.values_screen {
+                                        ValuesScreen::Headers => ValuesScreen::Body,
+                                        ValuesScreen::Params => ValuesScreen::Headers,
+                                        _ => app.values_screen,
                                     };
                                 }
-                                KeyCode::Char('q') => {
-                                    app.current_screen = CurrentScreen::Exiting;
-                                    return Ok(true);
+                                KeyCode::Char('l') | KeyCode::Right => {
+                                    app.values_screen = match app.values_screen {
+                                        ValuesScreen::Body => ValuesScreen::Headers,
+                                        ValuesScreen::Headers => ValuesScreen::Params,
+                                        _ => app.values_screen,
+                                    };
+                                }
+                                KeyCode::Char('i') => {
+                                    match app.values_screen {
+                                        ValuesScreen::Body => {
+                                            app.current_screen = CurrentScreen::EditingBody;
+                                        }
+                                        ValuesScreen::Headers => {
+                                            app.current_screen = CurrentScreen::EditingHeaders;
+                                        }
+                                        ValuesScreen::Params => {
+                                            app.current_screen = CurrentScreen::EditingParams;
+                                        }
+                                    }
                                 }
                                 _ => {}
-                            }
+                            },
+                            _ => {}
                         }
                     }
                 }

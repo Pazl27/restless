@@ -1,7 +1,7 @@
 use crate::app::tab::Tab;
 use crate::logic::HttpMethod;
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Copy, Clone)]
 pub enum CurrentScreen {
     Url,
     Values,
