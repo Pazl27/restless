@@ -9,19 +9,15 @@ pub mod renderer;
 pub mod layouts;
 
 pub use renderer::ui;
-pub use components::*;
-pub use popups::*;
 pub use layouts::*;
 
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Position, Rect},
+    layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Style},
-    text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, Tabs},
-    Frame,
+    text::Span,
+    widgets::{Block, Borders},
 };
 
-use crate::app::{App, ValuesScreen};
 
 /// Common UI constants and utilities
 pub const BORDER_COLOR_ACTIVE: Color = Color::Green;

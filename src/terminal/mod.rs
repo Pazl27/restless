@@ -13,7 +13,7 @@ use crossterm::{
 use ratatui::{backend::CrosstermBackend, Terminal};
 use std::io::{self, Stderr};
 
-use crate::error::{RestlessError, UiError};
+use crate::error::RestlessError;
 
 /// Terminal manager that handles setup and cleanup
 pub struct TerminalManager {

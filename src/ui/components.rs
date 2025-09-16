@@ -5,7 +5,7 @@
 //! makes the code more maintainable and testable.
 
 use ratatui::{
-    layout::{Alignment, Constraint, Direction, Layout, Position, Rect},
+    layout::{Alignment, Position, Rect},
     style::{Color, Style, Modifier},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, Tabs},
@@ -13,11 +13,9 @@ use ratatui::{
 };
 
 use crate::app::{App, CurrentScreen, ValuesScreen};
-use crate::logic::HttpMethod;
 use super::{
     create_block, create_url_layout, create_values_layout, create_response_layout,
-    method_text, get_method_color, truncate_text,
-    BORDER_COLOR_ACTIVE, BORDER_COLOR_EDITING, TEXT_COLOR_MUTED, TEXT_COLOR_HIGHLIGHT,
+    method_text, truncate_text, TEXT_COLOR_MUTED, TEXT_COLOR_HIGHLIGHT,
 };
 
 /// Renders the tab bar at the top of the application

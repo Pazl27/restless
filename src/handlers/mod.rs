@@ -10,13 +10,10 @@ pub mod tab;
 pub mod navigation;
 
 pub use keyboard::*;
-pub use request::*;
-pub use tab::*;
-pub use navigation::*;
 
 use crate::app::{App, CurrentScreen};
 use crate::error::Result;
-use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+use crossterm::event::{KeyCode, KeyEvent};
 
 /// Main event handler that routes events to appropriate sub-handlers
 pub async fn handle_key_event(app: &mut App, key: KeyEvent) -> Result<Option<String>> {
