@@ -137,6 +137,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                 app.current_screen = CurrentScreen::Exiting;
                                 return Ok(true);
                             }
+
                             KeyCode::Char('t') => {
                                 app.add_new_tab();
                             }
@@ -181,6 +182,9 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                             app.response_scroll.saturating_sub(1);
                                     }
                                 }
+                                KeyCode::Char('?') => {
+                                    app.show_help();
+                                }
                                 _ => {}
                             },
                             CurrentScreen::Values => match key.code {
@@ -211,12 +215,37 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                         }
                                     }
                                 }
+                                KeyCode::Char('?') => {
+                                    app.show_help();
+                                }
+                                _ => {}
+                            },
+                            CurrentScreen::Url => match key.code {
+                                KeyCode::Char('?') => {
+                                    app.show_help();
+                                }
                                 _ => {}
                             },
                             _ => {}
                         }
                     }
                 }
+
+                CurrentScreen::Help => match key.code {
+                    KeyCode::Esc => {
+                        app.hide_help();
+                    }
+                    KeyCode::Char('j') => {
+                        let help_content = app.get_help_content();
+                        if app.help_scroll < help_content.len().saturating_sub(1) {
+                            app.help_scroll = app.help_scroll.saturating_add(1);
+                        }
+                    }
+                    KeyCode::Char('k') => {
+                        app.help_scroll = app.help_scroll.saturating_sub(1);
+                    }
+                    _ => {}
+                },
 
                 CurrentScreen::EditingUrl => match key.code {
                     KeyCode::Enter => {

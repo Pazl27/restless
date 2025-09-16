@@ -11,6 +11,7 @@ pub enum CurrentScreen {
     EditingBody,
     EditingHeaders,
     EditingParams,
+    Help,
     Exiting,
 }
 
@@ -46,6 +47,10 @@ pub struct App {
     pub response_tab_selected: usize,
     pub response_scroll: usize,
     pub response_scroll_state: ratatui::widgets::ScrollbarState,
+    
+    pub help_visible: bool,
+    pub help_scroll: usize,
+    pub previous_screen: CurrentScreen,
 }
 
 impl App {
@@ -74,6 +79,9 @@ impl App {
             response_tab_selected: 1,
             response_scroll: 0,
             response_scroll_state: ratatui::widgets::ScrollbarState::default(),
+            help_visible: false,
+            help_scroll: 0,
+            previous_screen: CurrentScreen::Values,
         }
     }
 
@@ -143,6 +151,52 @@ impl App {
             
             self.restore_current_tab_state();
         }
+    }
+
+    pub fn show_help(&mut self) {
+        if !self.help_visible {
+            self.previous_screen = self.current_screen;
+            self.current_screen = CurrentScreen::Help;
+            self.help_visible = true;
+            self.help_scroll = 0;
+        }
+    }
+
+    pub fn hide_help(&mut self) {
+        if self.help_visible {
+            self.current_screen = self.previous_screen;
+            self.help_visible = false;
+        }
+    }
+
+    pub fn get_help_content(&self) -> Vec<(&'static str, &'static str)> {
+        vec![
+            ("Navigation", ""),
+            ("Ctrl+j/k", "Navigate between sections (URL/Values/Response)"),
+            ("h/l", "Navigate between Body/Headers/Params in Values"),
+            ("", ""),
+            ("Tab Management", ""),
+            ("t", "Create new tab"),
+            ("x", "Close current tab"),
+            ("Tab", "Next tab"),
+            ("Shift+Tab", "Previous tab"),
+            ("Ctrl+1/2/3", "Jump to specific tab"),
+            ("", ""),
+            ("Editing", ""),
+            ("i", "Insert/edit mode (body/headers/params)"),
+            ("u", "Edit URL"),
+            ("m", "Open method dropdown"),
+            ("Enter", "Execute HTTP request"),
+            ("Esc", "Exit edit mode"),
+            ("", ""),
+            ("Response Navigation", ""),
+            ("j/k", "Scroll response content"),
+            ("h/b", "Switch between Headers/Body"),
+            ("", ""),
+            ("Application", ""),
+            ("?", "Show/hide this help"),
+            ("q", "Quit application"),
+        ]
     }
 
     pub fn save_current_tab_state(&mut self) {

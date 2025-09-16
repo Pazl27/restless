@@ -10,6 +10,11 @@ use crate::app::{App, ValuesScreen};
 
 pub fn ui(f: &mut Frame, app: &mut App) {
     render_content(f, app, f.area());
+    
+    // Render help popup if visible
+    if app.help_visible {
+        render_help_popup(f, app);
+    }
 }
 
 fn render_content(f: &mut Frame, app: &mut App, area: Rect) {
@@ -333,41 +338,83 @@ fn render_params_input_content(f: &mut Frame, app: &App, area: Rect) {
     f.render_widget(list, area);
 }
 
-fn render_help_bar(f: &mut Frame, app: &App, area: Rect) {
-    let help_text = match app.current_screen {
-        crate::app::CurrentScreen::Url => {
-            "u: Edit URL | m: Method | t: New tab | x: Close tab | Tab: Switch tabs | Ctrl+j/k: Navigate sections | Enter: Execute | q: Quit"
-        }
-        crate::app::CurrentScreen::Values => {
-            match app.values_screen {
-                ValuesScreen::Body => "i: Insert body | h/l: Switch tabs | t: New tab | x: Close tab | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
-                ValuesScreen::Headers => "i: Insert header | h/l: Switch tabs | t: New tab | x: Close tab | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
-                ValuesScreen::Params => "i: Insert param | h/l: Switch tabs | t: New tab | x: Close tab | Tab: Switch request tabs | Ctrl+j/k: Navigate sections | Enter: Execute",
-            }
-        }
-        crate::app::CurrentScreen::Response => {
-            "j/k: Scroll | h/b: Headers/Body | t: New tab | x: Close tab | Tab: Switch tabs | Ctrl+j/k: Navigate sections | Enter: Execute | q: Quit"
-        }
-        crate::app::CurrentScreen::EditingUrl => {
-            "Type URL | Enter: Save | Esc: Cancel"
-        }
-        crate::app::CurrentScreen::EditingBody => {
-            "Type body content | Enter: New line | Esc: Finish editing"
-        }
-        crate::app::CurrentScreen::EditingHeaders => {
-            "Format: Key: Value | Enter: Add header | Esc: Finish editing"
-        }
-        crate::app::CurrentScreen::EditingParams => {
-            "Format: key=value | Enter: Add param | Esc: Finish editing"
-        }
-        _ => "q: Quit application"
-    };
+fn render_help_bar(f: &mut Frame, _app: &App, area: Rect) {
+    let help_text = "Press ? for help";
 
     let help_paragraph = Paragraph::new(help_text)
         .style(Style::default().fg(Color::Gray))
         .block(Block::default().borders(Borders::TOP));
 
     f.render_widget(help_paragraph, area);
+}
+
+fn render_help_popup(f: &mut Frame, app: &App) {
+    // Calculate popup area (centered, 80% of screen)
+    let area = f.area();
+    let popup_area = Rect {
+        x: area.width / 10,
+        y: area.height / 10,
+        width: area.width * 8 / 10,
+        height: area.height * 8 / 10,
+    };
+
+    // Clear the background
+    f.render_widget(Clear, popup_area);
+
+    // Create help content
+    let help_items = app.get_help_content();
+    let mut lines = Vec::new();
+    
+    for (key, description) in help_items.iter().skip(app.help_scroll) {
+        if key.is_empty() && description.is_empty() {
+            lines.push(Line::from(""));
+        } else if description.is_empty() {
+            // Section header
+            lines.push(Line::from(Span::styled(
+                key.to_string(),
+                Style::default().fg(Color::Yellow).add_modifier(ratatui::style::Modifier::BOLD)
+            )));
+        } else {
+            // Key binding
+            lines.push(Line::from(vec![
+                Span::styled(
+                    format!("{:15}", key),
+                    Style::default().fg(Color::Green).add_modifier(ratatui::style::Modifier::BOLD)
+                ),
+                Span::raw(" "),
+                Span::styled(
+                    description.to_string(),
+                    Style::default().fg(Color::White)
+                ),
+            ]));
+        }
+    }
+
+    let help_block = Block::default()
+        .title(" Restless - Key Bindings ")
+        .title_alignment(Alignment::Center)
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Yellow));
+
+    let help_paragraph = Paragraph::new(lines)
+        .block(help_block)
+        .wrap(ratatui::widgets::Wrap { trim: true });
+
+    f.render_widget(help_paragraph, popup_area);
+
+    // Add scroll indicator
+    if app.help_scroll > 0 || app.help_scroll < help_items.len().saturating_sub(1) {
+        let scroll_info = format!("j/k to scroll, Esc to close ({})", app.help_scroll + 1);
+        let scroll_area = Rect {
+            x: popup_area.x + 2,
+            y: popup_area.y + popup_area.height - 1,
+            width: popup_area.width - 4,
+            height: 1,
+        };
+        let scroll_text = Paragraph::new(scroll_info)
+            .style(Style::default().fg(Color::Gray));
+        f.render_widget(scroll_text, scroll_area);
+    }
 }
 
 fn render_response_output(f: &mut Frame, app: &App, area: Rect) {
