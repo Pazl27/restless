@@ -50,15 +50,6 @@ cargo build --release
 ./target/release/restless
 ```
 
-#### Using Cargo
-```bash
-cargo install restless
-restless
-```
-
-#### Download Binary
-Download the latest release from the [releases page](https://github.com/yourusername/restless/releases).
-
 ### System Requirements
 
 - **Terminal**: Any modern terminal emulator
