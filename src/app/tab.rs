@@ -15,6 +15,7 @@ impl Tab {
                 method: (&HttpMethod::GET).into(),
                 headers: vec![],
                 body: None,
+                params: vec![],
             },
             response: None
 

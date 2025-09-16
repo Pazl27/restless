@@ -2,11 +2,11 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Position, Rect},
     style::{Color, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, Paragraph, Scrollbar, ScrollbarOrientation, Tabs},
+    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, Tabs},
     Frame,
 };
 
-use crate::app::App;
+use crate::app::{App, ValuesScreen};
 
 pub fn ui(f: &mut Frame, app: &mut App) {
     render_content(f, app, f.area());
@@ -46,7 +46,7 @@ fn render_tabs(f: &mut Frame, app: &App, area: Rect) {
 fn render_url_input(f: &mut Frame, app: &App, area: Rect) {
     render_url_input_box(f, app, area);
 
-    if let crate::app::CurrentScreen::Editing = app.current_screen {
+    if let crate::app::CurrentScreen::EditingUrl = app.current_screen {
         let x = area.x + 16 + app.url_input.len() as u16;
         let y = area.y + 1;
         let pos = Position { x, y };
@@ -138,15 +138,195 @@ fn render_url_input_box(f: &mut Frame, app: &App, area: Rect) {
     }
 }
 
-fn render_params_input(f: &mut Frame, _app: &App, area: Rect) {
-    let mut block = Block::default().borders(Borders::ALL);
+fn render_params_input(f: &mut Frame, app: &App, area: Rect) {
+    // Create tabs for Body, Headers, Params
+    let tabs_area = Rect {
+        x: area.x,
+        y: area.y,
+        width: area.width,
+        height: 3,
+    };
+    
+    let content_area = Rect {
+        x: area.x,
+        y: area.y + 3,
+        width: area.width,
+        height: area.height.saturating_sub(3),
+    };
 
-    if let crate::app::CurrentScreen::Values = _app.current_screen {
-        block = block.border_style(Style::default().fg(Color::Green));
+    // Render tabs
+    let titles = vec![
+        Line::from("Body"),
+        Line::from("Headers"), 
+        Line::from("Params")
+    ];
+    
+    let selected_tab = match app.values_screen {
+        ValuesScreen::Body => 0,
+        ValuesScreen::Headers => 1,
+        ValuesScreen::Params => 2,
+    };
+
+    let tabs = Tabs::new(titles)
+        .select(selected_tab)
+        .highlight_style(Style::default().fg(Color::Yellow))
+        .divider(" ")
+        .padding("", "");
+    
+    f.render_widget(tabs, tabs_area);
+
+    // Render content based on selected tab
+    match app.values_screen {
+        ValuesScreen::Body => render_body_input(f, app, content_area),
+        ValuesScreen::Headers => render_headers_input(f, app, content_area),
+        ValuesScreen::Params => render_params_input_content(f, app, content_area),
+    }
+}
+
+fn render_body_input(f: &mut Frame, app: &App, area: Rect) {
+    let mut block = Block::default()
+        .borders(Borders::ALL)
+        .title("Request Body");
+
+    if let crate::app::CurrentScreen::Values = app.current_screen {
+        if let ValuesScreen::Body = app.values_screen {
+            block = block.border_style(Style::default().fg(Color::Green));
+        }
     }
 
-    let params_input = Paragraph::new("Params/Body/Headers input...").block(block);
-    f.render_widget(params_input, area);
+    if let crate::app::CurrentScreen::EditingBody = app.current_screen {
+        block = block.border_style(Style::default().fg(Color::Yellow));
+    }
+
+    let content = if app.body_input.is_empty() {
+        if let crate::app::CurrentScreen::Values = app.current_screen {
+            if let ValuesScreen::Body = app.values_screen {
+                "Press 'e' to edit body...\n\nTip: Use JSON, XML, or plain text".to_string()
+            } else {
+                "Body (empty)".to_string()
+            }
+        } else {
+            "Body (empty)".to_string()
+        }
+    } else {
+        app.body_input.clone()
+    };
+
+    let paragraph = Paragraph::new(content).block(block);
+    f.render_widget(paragraph, area);
+
+    // Set cursor position when editing
+    if let crate::app::CurrentScreen::EditingBody = app.current_screen {
+        let lines: Vec<&str> = app.body_input.lines().collect();
+        let last_line = lines.last().unwrap_or(&"");
+        let cursor_y = area.y + 1 + lines.len().saturating_sub(1) as u16;
+        let cursor_x = area.x + 1 + last_line.len() as u16;
+        f.set_cursor_position(Position { x: cursor_x, y: cursor_y });
+    }
+}
+
+fn render_headers_input(f: &mut Frame, app: &App, area: Rect) {
+    let mut block = Block::default()
+        .borders(Borders::ALL)
+        .title("Headers");
+
+    if let crate::app::CurrentScreen::Values = app.current_screen {
+        if let ValuesScreen::Headers = app.values_screen {
+            block = block.border_style(Style::default().fg(Color::Green));
+        }
+    }
+
+    if let crate::app::CurrentScreen::EditingHeaders = app.current_screen {
+        block = block.border_style(Style::default().fg(Color::Yellow));
+    }
+
+    // Create list items for existing headers
+    let mut items: Vec<ListItem> = app.headers_input
+        .iter()
+        .map(|(key, value)| {
+            ListItem::new(Line::from(format!("{}: {}", key, value)))
+        })
+        .collect();
+
+    // Add current input line if editing
+    if let crate::app::CurrentScreen::EditingHeaders = app.current_screen {
+        let current_input = if app.current_header_value.is_empty() {
+            format!("{}:", app.current_header_key)
+        } else {
+            format!("{}: {}", app.current_header_key, app.current_header_value)
+        };
+        items.push(ListItem::new(Line::from(Span::styled(
+            current_input,
+            Style::default().fg(Color::Yellow)
+        ))));
+    } else if items.is_empty() {
+        if let crate::app::CurrentScreen::Values = app.current_screen {
+            if let ValuesScreen::Headers = app.values_screen {
+                items.push(ListItem::new(Line::from("Press 'e' to add headers...")));
+                items.push(ListItem::new(Line::from("Format: Key: Value")));
+                items.push(ListItem::new(Line::from("Example: Content-Type: application/json")));
+            } else {
+                items.push(ListItem::new(Line::from("No headers")));
+            }
+        } else {
+            items.push(ListItem::new(Line::from("No headers")));
+        }
+    }
+
+    let list = List::new(items).block(block);
+    f.render_widget(list, area);
+}
+
+fn render_params_input_content(f: &mut Frame, app: &App, area: Rect) {
+    let mut block = Block::default()
+        .borders(Borders::ALL)
+        .title("Query Parameters");
+
+    if let crate::app::CurrentScreen::Values = app.current_screen {
+        if let ValuesScreen::Params = app.values_screen {
+            block = block.border_style(Style::default().fg(Color::Green));
+        }
+    }
+
+    if let crate::app::CurrentScreen::EditingParams = app.current_screen {
+        block = block.border_style(Style::default().fg(Color::Yellow));
+    }
+
+    // Create list items for existing params
+    let mut items: Vec<ListItem> = app.params_input
+        .iter()
+        .map(|(key, value)| {
+            ListItem::new(Line::from(format!("{}={}", key, value)))
+        })
+        .collect();
+
+    // Add current input line if editing
+    if let crate::app::CurrentScreen::EditingParams = app.current_screen {
+        let current_input = if app.current_param_value.is_empty() {
+            format!("{}=", app.current_param_key)
+        } else {
+            format!("{}={}", app.current_param_key, app.current_param_value)
+        };
+        items.push(ListItem::new(Line::from(Span::styled(
+            current_input,
+            Style::default().fg(Color::Yellow)
+        ))));
+    } else if items.is_empty() {
+        if let crate::app::CurrentScreen::Values = app.current_screen {
+            if let ValuesScreen::Params = app.values_screen {
+                items.push(ListItem::new(Line::from("Press 'e' to add parameters...")));
+                items.push(ListItem::new(Line::from("Format: key=value")));
+                items.push(ListItem::new(Line::from("Example: limit=10")));
+            } else {
+                items.push(ListItem::new(Line::from("No parameters")));
+            }
+        } else {
+            items.push(ListItem::new(Line::from("No parameters")));
+        }
+    }
+
+    let list = List::new(items).block(block);
+    f.render_widget(list, area);
 }
 
 fn render_response_output(f: &mut Frame, app: &App, area: Rect) {

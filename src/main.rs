@@ -9,7 +9,7 @@ use ratatui::Terminal;
 use std::io;
 
 mod app;
-use app::{App, CurrentScreen};
+use app::{App, CurrentScreen, ValuesScreen};
 
 mod ui;
 use ui::ui;
@@ -85,7 +85,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                         }
                     } else {
                         if let KeyCode::Char('u') = key.code {
-                            app.current_screen = CurrentScreen::Editing;
+                            app.current_screen = CurrentScreen::EditingUrl;
                         } else {
                             match app.current_screen {
                                 CurrentScreen::Response => match key.code {
@@ -118,6 +118,33 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                                     }
                                     KeyCode::Up => {
                                         app.current_screen = CurrentScreen::Url;
+                                    }
+                                    KeyCode::Left | KeyCode::Char('h') => {
+                                        app.values_screen = match app.values_screen {
+                                            ValuesScreen::Headers => ValuesScreen::Body,
+                                            ValuesScreen::Params => ValuesScreen::Headers,
+                                            _ => app.values_screen,
+                                        };
+                                    }
+                                    KeyCode::Right | KeyCode::Char('l') => {
+                                        app.values_screen = match app.values_screen {
+                                            ValuesScreen::Body => ValuesScreen::Headers,
+                                            ValuesScreen::Headers => ValuesScreen::Params,
+                                            _ => app.values_screen,
+                                        };
+                                    }
+                                    KeyCode::Char('e') => {
+                                        match app.values_screen {
+                                            ValuesScreen::Body => {
+                                                app.current_screen = CurrentScreen::EditingBody;
+                                            }
+                                            ValuesScreen::Headers => {
+                                                app.current_screen = CurrentScreen::EditingHeaders;
+                                            }
+                                            ValuesScreen::Params => {
+                                                app.current_screen = CurrentScreen::EditingParams;
+                                            }
+                                        }
                                     }
                                     _ => {}
                                 },
@@ -162,7 +189,7 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                     }
                 }
 
-                CurrentScreen::Editing => match key.code {
+                CurrentScreen::EditingUrl => match key.code {
                     KeyCode::Enter => {
                         app.tabs[app.selected_tab].request.url = app.url_input.clone();
                         app.current_screen = CurrentScreen::Url;
@@ -175,6 +202,114 @@ async fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Resul
                     }
                     KeyCode::Char(c) => {
                         app.url_input.push(c);
+                    }
+                    _ => {}
+                },
+                CurrentScreen::EditingBody => match key.code {
+                    KeyCode::Enter => {
+                        app.body_input.push('\n');
+                    }
+                    KeyCode::Backspace => {
+                        app.body_input.pop();
+                    }
+                    KeyCode::Esc => {
+                        app.current_screen = CurrentScreen::Values;
+                    }
+                    KeyCode::Char(c) => {
+                        app.body_input.push(c);
+                    }
+                    _ => {}
+                },
+                CurrentScreen::EditingHeaders => match key.code {
+                    KeyCode::Enter => {
+                        if !app.current_header_key.is_empty() {
+                            app.add_header();
+                        } else {
+                            app.current_screen = CurrentScreen::Values;
+                        }
+                    }
+                    KeyCode::Tab => {
+                        // Switch focus between key and value (simplified for now)
+                        if !app.current_header_key.is_empty() && app.current_header_value.is_empty() {
+                            app.current_header_value.push(' '); // Start value input
+                            app.current_header_value.clear();
+                        }
+                    }
+                    KeyCode::Backspace => {
+                        if !app.current_header_value.is_empty() {
+                            app.current_header_value.pop();
+                        } else if !app.current_header_key.is_empty() {
+                            app.current_header_key.pop();
+                        }
+                    }
+                    KeyCode::Esc => {
+                        app.current_header_key.clear();
+                        app.current_header_value.clear();
+                        app.current_screen = CurrentScreen::Values;
+                    }
+                    KeyCode::Char(':') => {
+                        if !app.current_header_key.is_empty() && app.current_header_value.is_empty() {
+                            // Switch to value input after ':'
+                        }
+                    }
+                    KeyCode::Char(' ') => {
+                        if app.current_header_key.ends_with(':') && app.current_header_value.is_empty() {
+                            // Start value input after ': '
+                        } else if !app.current_header_value.is_empty() || !app.current_header_key.is_empty() {
+                            if app.current_header_key.contains(':') {
+                                app.current_header_value.push(' ');
+                            } else {
+                                app.current_header_key.push(' ');
+                            }
+                        }
+                    }
+                    KeyCode::Char(c) => {
+                        if !app.current_header_key.contains(':') {
+                            app.current_header_key.push(c);
+                        } else {
+                            app.current_header_value.push(c);
+                        }
+                    }
+                    _ => {}
+                },
+                CurrentScreen::EditingParams => match key.code {
+                    KeyCode::Enter => {
+                        if !app.current_param_key.is_empty() {
+                            app.add_param();
+                        } else {
+                            app.current_screen = CurrentScreen::Values;
+                        }
+                    }
+                    KeyCode::Tab => {
+                        // Switch focus between key and value (simplified for now)
+                        if !app.current_param_key.is_empty() && app.current_param_value.is_empty() {
+                            app.current_param_value.push(' '); // Start value input
+                            app.current_param_value.clear();
+                        }
+                    }
+                    KeyCode::Backspace => {
+                        if !app.current_param_value.is_empty() {
+                            app.current_param_value.pop();
+                        } else if !app.current_param_key.is_empty() {
+                            app.current_param_key.pop();
+                        }
+                    }
+                    KeyCode::Esc => {
+                        app.current_param_key.clear();
+                        app.current_param_value.clear();
+                        app.current_screen = CurrentScreen::Values;
+                    }
+                    KeyCode::Char('=') => {
+                        if !app.current_param_key.is_empty() && app.current_param_value.is_empty() {
+                            // Switch to value input after '='
+                        }
+                    }
+                    KeyCode::Char(c) => {
+                        if !app.current_param_key.contains('=') {
+                            app.current_param_key.push(c);
+                        } else {
+                            app.current_param_value.push(c);
+                        }
                     }
                     _ => {}
                 },

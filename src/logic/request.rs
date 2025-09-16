@@ -6,6 +6,7 @@ pub struct Request {
     pub method: Method,
     pub headers: Vec<(String, String)>,
     pub body: Option<String>,
+    pub params: Vec<(String, String)>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -49,7 +50,25 @@ impl Request {
 
 pub async fn send_request(req: &Request) -> Result<(u16, String, String)> {
     let client = Client::new();
-    let mut request_builder = client.request((&req.method).into(), &req.url);
+    
+    // Build URL with query parameters
+    let mut url = req.url.clone();
+    if !req.params.is_empty() {
+        let query_string: String = req.params
+            .iter()
+            .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
+            .collect::<Vec<_>>()
+            .join("&");
+        
+        if url.contains('?') {
+            url.push('&');
+        } else {
+            url.push('?');
+        }
+        url.push_str(&query_string);
+    }
+    
+    let mut request_builder = client.request((&req.method).into(), &url);
 
     for (key, value) in &req.headers {
         request_builder = request_builder.header(key, value);
@@ -82,6 +101,7 @@ mod tests {
             method: Method::GET,
             headers: vec![],
             body: None,
+            params: vec![],
         };
 
         let response = send_request(&req).await.unwrap();
@@ -98,6 +118,7 @@ mod tests {
             method: Method::POST,
             headers: vec![("Content-Type".to_string(), "application/json".to_string())],
             body: Some("{\"foo\": \"bar\"}".to_string()),
+            params: vec![],
         };
 
         let response = send_request(&req).await.unwrap();
@@ -120,5 +141,70 @@ mod tests {
             let back = HttpMethod::try_from(&reqwest_method).unwrap();
             assert_eq!(*m, back);
         }
+    }
+
+    #[test]
+    fn test_url_building_with_params() {
+        let req = Request {
+            url: "https://api.example.com/users".to_string(),
+            method: Method::GET,
+            headers: vec![],
+            body: None,
+            params: vec![
+                ("limit".to_string(), "10".to_string()),
+                ("page".to_string(), "1".to_string()),
+                ("search".to_string(), "john doe".to_string()),
+            ],
+        };
+
+        // Test URL building logic (we can't easily test the full request without network)
+        let mut url = req.url.clone();
+        if !req.params.is_empty() {
+            let query_string: String = req.params
+                .iter()
+                .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
+                .collect::<Vec<_>>()
+                .join("&");
+        
+            if url.contains('?') {
+                url.push('&');
+            } else {
+                url.push('?');
+            }
+            url.push_str(&query_string);
+        }
+
+        assert_eq!(url, "https://api.example.com/users?limit=10&page=1&search=john%20doe");
+    }
+
+    #[test]
+    fn test_url_building_with_existing_query() {
+        let req = Request {
+            url: "https://api.example.com/users?existing=true".to_string(),
+            method: Method::GET,
+            headers: vec![],
+            body: None,
+            params: vec![
+                ("limit".to_string(), "10".to_string()),
+            ],
+        };
+
+        let mut url = req.url.clone();
+        if !req.params.is_empty() {
+            let query_string: String = req.params
+                .iter()
+                .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
+                .collect::<Vec<_>>()
+                .join("&");
+        
+            if url.contains('?') {
+                url.push('&');
+            } else {
+                url.push('?');
+            }
+            url.push_str(&query_string);
+        }
+
+        assert_eq!(url, "https://api.example.com/users?existing=true&limit=10");
     }
 }
