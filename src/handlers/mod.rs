@@ -1,13 +1,13 @@
 //! Event handlers for the Restless application
-//! 
+//!
 //! This module contains all event handling logic, organized by functionality.
 //! Each handler is responsible for processing specific types of events and
 //! updating the application state accordingly.
 
 pub mod keyboard;
+pub mod navigation;
 pub mod request;
 pub mod tab;
-pub mod navigation;
 
 pub use keyboard::*;
 
@@ -27,24 +27,12 @@ pub async fn handle_key_event(app: &mut App, key: KeyEvent) -> Result<Option<Str
         CurrentScreen::Url | CurrentScreen::Values | CurrentScreen::Response => {
             handle_main_screen_keys(app, key).await
         }
-        CurrentScreen::EditingUrl => {
-            handle_url_editing_keys(app, key).await
-        }
-        CurrentScreen::EditingBody => {
-            handle_body_editing_keys(app, key).await
-        }
-        CurrentScreen::EditingHeaders => {
-            handle_headers_editing_keys(app, key).await
-        }
-        CurrentScreen::EditingParams => {
-            handle_params_editing_keys(app, key).await
-        }
-        CurrentScreen::Help => {
-            handle_help_keys(app, key).await
-        }
-        CurrentScreen::Exiting => {
-            Ok(Some("Application exiting".to_string()))
-        }
+        CurrentScreen::EditingUrl => handle_url_editing_keys(app, key).await,
+        CurrentScreen::EditingBody => handle_body_editing_keys(app, key).await,
+        CurrentScreen::EditingHeaders => handle_headers_editing_keys(app, key).await,
+        CurrentScreen::EditingParams => handle_params_editing_keys(app, key).await,
+        CurrentScreen::Help => handle_help_keys(app, key).await,
+        CurrentScreen::Exiting => Ok(Some("Application exiting".to_string())),
     }
 }
 
@@ -63,17 +51,18 @@ async fn handle_global_keys(app: &mut App, key: KeyEvent) -> Result<Option<Optio
             }
             Ok(Some(None))
         }
-        _ => Ok(None)
+        _ => Ok(None),
     }
 }
 
 /// Checks if the app is in any editing mode
 fn is_editing_mode(app: &App) -> bool {
-    matches!(app.current_screen,
-        CurrentScreen::EditingUrl |
-        CurrentScreen::EditingBody |
-        CurrentScreen::EditingHeaders |
-        CurrentScreen::EditingParams
+    matches!(
+        app.current_screen,
+        CurrentScreen::EditingUrl
+            | CurrentScreen::EditingBody
+            | CurrentScreen::EditingHeaders
+            | CurrentScreen::EditingParams
     )
 }
 
@@ -126,15 +115,15 @@ mod tests {
     #[test]
     fn test_is_editing_mode() {
         let mut app = App::new();
-        
+
         assert!(!is_editing_mode(&app));
-        
+
         app.current_screen = CurrentScreen::EditingUrl;
         assert!(is_editing_mode(&app));
-        
+
         app.current_screen = CurrentScreen::EditingBody;
         assert!(is_editing_mode(&app));
-        
+
         app.current_screen = CurrentScreen::Values;
         assert!(!is_editing_mode(&app));
     }
@@ -143,7 +132,7 @@ mod tests {
     async fn test_global_quit_key() {
         let mut app = App::new();
         let key = create_key_event(KeyCode::Char('q'));
-        
+
         let result = handle_global_keys(&mut app, key).await.unwrap();
         assert!(result.is_some());
         assert_eq!(app.current_screen, CurrentScreen::Exiting);
@@ -153,13 +142,13 @@ mod tests {
     async fn test_global_help_key() {
         let mut app = App::new();
         let key = create_key_event(KeyCode::Char('?'));
-        
+
         assert!(!app.help_visible);
-        
+
         let result = handle_global_keys(&mut app, key).await.unwrap();
         assert!(result.is_some());
         assert!(app.help_visible);
-        
+
         // Test toggle
         let result = handle_global_keys(&mut app, key).await.unwrap();
         assert!(result.is_some());
@@ -170,12 +159,12 @@ mod tests {
     async fn test_global_keys_ignored_in_editing_mode() {
         let mut app = App::new();
         app.current_screen = CurrentScreen::EditingUrl;
-        
+
         let quit_key = create_key_event(KeyCode::Char('q'));
         let result = handle_global_keys(&mut app, quit_key).await.unwrap();
         assert!(result.is_none());
         assert_ne!(app.current_screen, CurrentScreen::Exiting);
-        
+
         let help_key = create_key_event(KeyCode::Char('?'));
         let result = handle_global_keys(&mut app, help_key).await.unwrap();
         assert!(result.is_none());

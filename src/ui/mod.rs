@@ -1,15 +1,15 @@
 //! User Interface module for Restless
-//! 
+//!
 //! This module contains all UI-related functionality, organized into separate
 //! components for better maintainability and testing.
 
 pub mod components;
+pub mod layouts;
 pub mod popups;
 pub mod renderer;
-pub mod layouts;
 
-pub use renderer::ui;
 pub use layouts::*;
+pub use renderer::ui;
 
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -17,7 +17,6 @@ use ratatui::{
     text::Span,
     widgets::{Block, Borders},
 };
-
 
 /// Common UI constants and utilities
 pub const BORDER_COLOR_ACTIVE: Color = Color::Green;
@@ -82,7 +81,7 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
 pub fn centered_rect_fixed(width: u16, height: u16, area: Rect) -> Rect {
     let popup_width = std::cmp::min(width, area.width.saturating_sub(2));
     let popup_height = std::cmp::min(height, area.height.saturating_sub(2));
-    
+
     Rect {
         x: (area.width.saturating_sub(popup_width)) / 2,
         y: (area.height.saturating_sub(popup_height)) / 2,
@@ -109,11 +108,8 @@ pub fn method_text(method: &crate::logic::HttpMethod) -> Span {
         crate::logic::HttpMethod::PUT => "PUT",
         crate::logic::HttpMethod::DELETE => "DELETE",
     };
-    
-    Span::styled(
-        method_str,
-        Style::default().fg(get_method_color(method))
-    )
+
+    Span::styled(method_str, Style::default().fg(get_method_color(method)))
 }
 
 /// Truncates text to fit within a given width
@@ -132,7 +128,7 @@ pub fn wrap_text(text: &str, width: usize) -> Vec<String> {
     if width == 0 {
         return vec![text.to_string()];
     }
-    
+
     text.chars()
         .collect::<Vec<char>>()
         .chunks(width)
@@ -162,7 +158,7 @@ mod tests {
     fn test_centered_rect_fixed() {
         let area = Rect::new(0, 0, 100, 50);
         let popup = centered_rect_fixed(60, 20, area);
-        
+
         assert_eq!(popup.width, 60);
         assert_eq!(popup.height, 20);
         assert_eq!(popup.x, 20);

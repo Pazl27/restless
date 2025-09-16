@@ -1,6 +1,6 @@
+use crate::error::{RequestError, RestlessError};
 use anyhow::Result;
 use reqwest::{Client, Method, Response as ReqwestResponse};
-use crate::error::{RestlessError, RequestError};
 
 pub struct Request {
     pub url: String,
@@ -52,27 +52,36 @@ impl Request {
         if self.url.is_empty() {
             return Err(RequestError::invalid_url("URL cannot be empty"));
         }
-        
+
         if !self.url.starts_with("http://") && !self.url.starts_with("https://") {
             return Err(RequestError::invalid_url(format!(
-                "URL must start with http:// or https://, got: {}", 
+                "URL must start with http:// or https://, got: {}",
                 self.url
             )));
         }
-        
+
         Ok(())
     }
 
     pub fn validate_headers(&self) -> Result<(), RequestError> {
         for (key, value) in &self.headers {
             if key.is_empty() {
-                return Err(RequestError::invalid_header(key.clone(), "Header key cannot be empty".to_string()));
+                return Err(RequestError::invalid_header(
+                    key.clone(),
+                    "Header key cannot be empty".to_string(),
+                ));
             }
             if key.contains('\n') || key.contains('\r') {
-                return Err(RequestError::invalid_header(key.clone(), "Header key cannot contain newlines".to_string()));
+                return Err(RequestError::invalid_header(
+                    key.clone(),
+                    "Header key cannot contain newlines".to_string(),
+                ));
             }
             if value.contains('\n') || value.contains('\r') {
-                return Err(RequestError::invalid_header(key.clone(), "Header value cannot contain newlines".to_string()));
+                return Err(RequestError::invalid_header(
+                    key.clone(),
+                    "Header value cannot contain newlines".to_string(),
+                ));
             }
         }
         Ok(())
@@ -83,15 +92,15 @@ pub async fn send_request(req: &Request) -> Result<(u16, String, String), Reques
     // Validate request before sending
     req.validate_url()?;
     req.validate_headers()?;
-    
+
     let client = Client::builder()
         .timeout(std::time::Duration::from_secs(30))
         .build()
         .map_err(|e| RequestError::connection(format!("Failed to create HTTP client: {}", e)))?;
-    
+
     // Build URL with query parameters
     let url = build_url_with_params(&req.url, &req.params)?;
-    
+
     let mut request_builder = client.request((&req.method).into(), &url);
 
     // Add headers with validation
@@ -105,21 +114,18 @@ pub async fn send_request(req: &Request) -> Result<(u16, String, String), Reques
     }
 
     // Send request with proper error handling
-    let response: ReqwestResponse = request_builder
-        .send()
-        .await
-        .map_err(|e| {
-            if e.is_timeout() {
-                RequestError::timeout(30)
-            } else if e.is_connect() {
-                RequestError::connection(format!("Connection failed: {}", e))
-            } else {
-                RequestError::Http(e)
-            }
-        })?;
+    let response: ReqwestResponse = request_builder.send().await.map_err(|e| {
+        if e.is_timeout() {
+            RequestError::timeout(30)
+        } else if e.is_connect() {
+            RequestError::connection(format!("Connection failed: {}", e))
+        } else {
+            RequestError::Http(e)
+        }
+    })?;
 
     let status_code = response.status().as_u16();
-    
+
     // Parse headers with error handling
     let headers = response
         .headers()
@@ -130,31 +136,38 @@ pub async fn send_request(req: &Request) -> Result<(u16, String, String), Reques
         })
         .collect::<Vec<_>>()
         .join("\n");
-    
+
     // Get body with error handling
-    let body = response
-        .text()
-        .await
-        .map_err(|e| RequestError::Http(e))?;
+    let body = response.text().await.map_err(|e| RequestError::Http(e))?;
 
     Ok((status_code, headers, body))
 }
 
-fn build_url_with_params(base_url: &str, params: &[(String, String)]) -> Result<String, RequestError> {
+fn build_url_with_params(
+    base_url: &str,
+    params: &[(String, String)],
+) -> Result<String, RequestError> {
     let mut url = base_url.to_string();
-    
+
     if !params.is_empty() {
         let query_string: String = params
             .iter()
             .map(|(k, v)| {
                 if k.is_empty() {
-                    return Err(RequestError::invalid_header(k.clone(), "Parameter key cannot be empty".to_string()));
+                    return Err(RequestError::invalid_header(
+                        k.clone(),
+                        "Parameter key cannot be empty".to_string(),
+                    ));
                 }
-                Ok(format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
+                Ok(format!(
+                    "{}={}",
+                    urlencoding::encode(k),
+                    urlencoding::encode(v)
+                ))
             })
             .collect::<Result<Vec<_>, RequestError>>()?
             .join("&");
-        
+
         if url.contains('?') {
             url.push('&');
         } else {
@@ -162,7 +175,7 @@ fn build_url_with_params(base_url: &str, params: &[(String, String)]) -> Result<
         }
         url.push_str(&query_string);
     }
-    
+
     Ok(url)
 }
 
@@ -236,12 +249,13 @@ mod tests {
         // Test URL building logic (we can't easily test the full request without network)
         let mut url = req.url.clone();
         if !req.params.is_empty() {
-            let query_string: String = req.params
+            let query_string: String = req
+                .params
                 .iter()
                 .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
                 .collect::<Vec<_>>()
                 .join("&");
-        
+
             if url.contains('?') {
                 url.push('&');
             } else {
@@ -250,7 +264,10 @@ mod tests {
             url.push_str(&query_string);
         }
 
-        assert_eq!(url, "https://api.example.com/users?limit=10&page=1&search=john%20doe");
+        assert_eq!(
+            url,
+            "https://api.example.com/users?limit=10&page=1&search=john%20doe"
+        );
     }
 
     #[test]
@@ -260,19 +277,18 @@ mod tests {
             method: Method::GET,
             headers: vec![],
             body: None,
-            params: vec![
-                ("limit".to_string(), "10".to_string()),
-            ],
+            params: vec![("limit".to_string(), "10".to_string())],
         };
 
         let mut url = req.url.clone();
         if !req.params.is_empty() {
-            let query_string: String = req.params
+            let query_string: String = req
+                .params
                 .iter()
                 .map(|(k, v)| format!("{}={}", urlencoding::encode(k), urlencoding::encode(v)))
                 .collect::<Vec<_>>()
                 .join("&");
-        
+
             if url.contains('?') {
                 url.push('&');
             } else {

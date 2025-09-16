@@ -1,5 +1,5 @@
-use serde_json::{Value, to_string_pretty};
 use crate::error::ResponseError;
+use serde_json::{to_string_pretty, Value};
 
 pub struct Response {
     pub status_code: u16,
@@ -11,7 +11,7 @@ impl Response {
     pub fn new(status_code: u16, headers: String, body: String) -> Result<Self, ResponseError> {
         let parsed_headers = Self::split_headers(&headers)?;
         let formatted_body = Self::pretty_print_json(&body)?;
-        
+
         Ok(Response {
             status_code,
             headers: parsed_headers,
@@ -34,10 +34,7 @@ impl Response {
 
         // Try to parse as JSON
         match serde_json::from_str::<Value>(raw_json.trim()) {
-            Ok(json_value) => {
-                to_string_pretty(&json_value)
-                    .map_err(ResponseError::JsonFormatting)
-            }
+            Ok(json_value) => to_string_pretty(&json_value).map_err(ResponseError::JsonFormatting),
             Err(_) => {
                 // If it's not JSON, return as-is
                 Ok(raw_json.to_string())
@@ -51,7 +48,7 @@ impl Response {
         }
 
         let mut headers = Vec::new();
-        
+
         for (line_num, line) in header_str.lines().enumerate() {
             let line = line.trim();
             if line.is_empty() {
@@ -63,42 +60,44 @@ impl Response {
                 (Some(key), Some(value)) => {
                     let key = key.trim();
                     let value = value.trim();
-                    
+
                     if key.is_empty() {
-                        return Err(ResponseError::header_parsing(
-                            format!("Empty header key on line {}: '{}'", line_num + 1, line)
-                        ));
+                        return Err(ResponseError::header_parsing(format!(
+                            "Empty header key on line {}: '{}'",
+                            line_num + 1,
+                            line
+                        )));
                     }
-                    
+
                     headers.push((key.to_string(), value.to_string()));
                 }
                 _ => {
                     // Skip malformed headers but log them
-                    eprintln!("Warning: Skipping malformed header on line {}: '{}'", line_num + 1, line);
+                    eprintln!(
+                        "Warning: Skipping malformed header on line {}: '{}'",
+                        line_num + 1,
+                        line
+                    );
                 }
             }
         }
-        
+
         Ok(headers)
     }
 
     pub fn is_json(&self) -> bool {
-        self.headers
-            .iter()
-            .any(|(key, value)| {
-                key.to_lowercase() == "content-type" && 
-                value.to_lowercase().contains("application/json")
-            })
+        self.headers.iter().any(|(key, value)| {
+            key.to_lowercase() == "content-type"
+                && value.to_lowercase().contains("application/json")
+        })
     }
 
     pub fn is_xml(&self) -> bool {
-        self.headers
-            .iter()
-            .any(|(key, value)| {
-                key.to_lowercase() == "content-type" && 
-                (value.to_lowercase().contains("application/xml") || 
-                 value.to_lowercase().contains("text/xml"))
-            })
+        self.headers.iter().any(|(key, value)| {
+            key.to_lowercase() == "content-type"
+                && (value.to_lowercase().contains("application/xml")
+                    || value.to_lowercase().contains("text/xml"))
+        })
     }
 
     pub fn content_type(&self) -> Option<&str> {
@@ -122,11 +121,8 @@ mod tests {
 
     #[test]
     fn test_response_new_with_invalid_json() {
-        let response = Response::new(
-            404,
-            "X-Test: test".to_string(),
-            "not a json".to_string(),
-        ).expect("Should create response successfully");
+        let response = Response::new(404, "X-Test: test".to_string(), "not a json".to_string())
+            .expect("Should create response successfully");
         assert_eq!(response.status_code, 404);
         assert_eq!(response.headers.len(), 1);
         assert_eq!(response.headers[0].0, "X-Test");
@@ -162,8 +158,7 @@ mod tests {
 
     #[test]
     fn test_split_headers_with_extra_colons() {
-        let headers = Response::split_headers("Foo: bar: baz")
-            .expect("Should handle extra colons");
+        let headers = Response::split_headers("Foo: bar: baz").expect("Should handle extra colons");
         assert_eq!(headers.len(), 1);
         assert_eq!(headers[0], ("Foo".to_string(), "bar: baz".to_string()));
     }
@@ -185,7 +180,10 @@ mod tests {
     fn test_pretty_print_json_with_array() {
         let raw = r#"[{"a":1},{"b":2}]"#;
         let pretty = Response::pretty_print_json(raw).expect("Should format JSON");
-        assert_eq!(pretty, "[\n  {\n    \"a\": 1\n  },\n  {\n    \"b\": 2\n  }\n]");
+        assert_eq!(
+            pretty,
+            "[\n  {\n    \"a\": 1\n  },\n  {\n    \"b\": 2\n  }\n]"
+        );
     }
 
     #[test]
@@ -203,7 +201,10 @@ mod tests {
         );
         assert!(response.is_json());
         assert!(!response.is_xml());
-        assert_eq!(response.content_type(), Some("application/json; charset=utf-8"));
+        assert_eq!(
+            response.content_type(),
+            Some("application/json; charset=utf-8")
+        );
     }
 
     #[test]

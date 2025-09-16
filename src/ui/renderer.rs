@@ -1,27 +1,30 @@
 //! Main UI renderer that coordinates all UI components
-//! 
+//!
 //! This module serves as the main entry point for rendering the application UI.
 //! It coordinates between different UI components and handles the overall layout.
 
-use ratatui::Frame;
-use crate::app::App;
 use super::{
-    components::{render_tabs, render_url_input, render_values_section, render_response_section, render_status_bar},
-    popups::{render_help_popup, render_error_popup},
+    components::{
+        render_response_section, render_status_bar, render_tabs, render_url_input,
+        render_values_section,
+    },
     layouts::create_main_layout,
+    popups::{render_error_popup, render_help_popup},
 };
+use crate::app::App;
+use ratatui::Frame;
 
 /// Main UI rendering function
-/// 
+///
 /// This is the entry point for all UI rendering. It coordinates the rendering
 /// of all UI components and handles popups.
 pub fn ui(f: &mut Frame, app: &mut App, error_message: &Option<String>) {
     // Create the main application layout
     let layout = create_main_layout(f.area());
-    
+
     // Render main application components
     render_main_content(f, app, &layout);
-    
+
     // Render popups on top of main content
     render_popups(f, app, error_message);
 }
@@ -49,8 +52,8 @@ fn render_popups(f: &mut Frame, app: &App, error_message: &Option<String>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ratatui::{backend::TestBackend, Terminal, layout::Rect};
     use crate::app::App;
+    use ratatui::{backend::TestBackend, layout::Rect, Terminal};
 
     #[test]
     fn test_ui_rendering_no_crash() {

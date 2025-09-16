@@ -1,5 +1,5 @@
 //! Navigation handlers for the Restless application
-//! 
+//!
 //! This module contains handlers for navigation between different screens
 //! and sections of the application.
 
@@ -99,21 +99,21 @@ pub fn enter_edit_mode(app: &mut App) -> Result<Option<String>> {
         CurrentScreen::Url => {
             app.current_screen = CurrentScreen::EditingUrl;
         }
-        CurrentScreen::Values => {
-            match app.values_screen {
-                ValuesScreen::Body => {
-                    app.current_screen = CurrentScreen::EditingBody;
-                }
-                ValuesScreen::Headers => {
-                    app.current_screen = CurrentScreen::EditingHeaders;
-                }
-                ValuesScreen::Params => {
-                    app.current_screen = CurrentScreen::EditingParams;
-                }
+        CurrentScreen::Values => match app.values_screen {
+            ValuesScreen::Body => {
+                app.current_screen = CurrentScreen::EditingBody;
             }
-        }
+            ValuesScreen::Headers => {
+                app.current_screen = CurrentScreen::EditingHeaders;
+            }
+            ValuesScreen::Params => {
+                app.current_screen = CurrentScreen::EditingParams;
+            }
+        },
         _ => {
-            return Ok(Some("Cannot enter edit mode from current screen".to_string()));
+            return Ok(Some(
+                "Cannot enter edit mode from current screen".to_string(),
+            ));
         }
     }
     Ok(None)
@@ -125,7 +125,9 @@ pub fn exit_edit_mode(app: &mut App) -> Result<Option<String>> {
         CurrentScreen::EditingUrl => {
             app.current_screen = CurrentScreen::Url;
         }
-        CurrentScreen::EditingBody | CurrentScreen::EditingHeaders | CurrentScreen::EditingParams => {
+        CurrentScreen::EditingBody
+        | CurrentScreen::EditingHeaders
+        | CurrentScreen::EditingParams => {
             app.current_screen = CurrentScreen::Values;
         }
         _ => {
@@ -165,7 +167,11 @@ pub fn get_navigation_context(app: &App) -> String {
             format!("Values - {}", tab)
         }
         CurrentScreen::Response => {
-            let tab = if app.response_tab_selected == 0 { "Headers" } else { "Body" };
+            let tab = if app.response_tab_selected == 0 {
+                "Headers"
+            } else {
+                "Body"
+            };
             format!("Response - {}", tab)
         }
         CurrentScreen::EditingUrl => "Editing URL".to_string(),
@@ -277,7 +283,7 @@ mod tests {
     #[test]
     fn test_get_navigation_context() {
         let mut app = App::new();
-        
+
         app.current_screen = CurrentScreen::Url;
         assert_eq!(get_navigation_context(&app), "URL Input");
 

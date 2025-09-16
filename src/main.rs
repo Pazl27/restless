@@ -7,9 +7,9 @@ use app::App;
 mod ui;
 use ui::ui;
 
-mod logic;
 mod error;
 mod handlers;
+mod logic;
 mod terminal;
 
 use crate::error::RestlessError;
@@ -51,7 +51,9 @@ async fn run_app(terminal_manager: &mut TerminalManager, app: &mut App) -> Resul
 
     loop {
         // Draw the UI
-        terminal_manager.terminal_mut().draw(|f| ui(f, app, &error_message))
+        terminal_manager
+            .terminal_mut()
+            .draw(|f| ui(f, app, &error_message))
             .map_err(|e| RestlessError::terminal(format!("Failed to draw UI: {}", e)))?;
 
         // Handle events

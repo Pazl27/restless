@@ -237,11 +237,9 @@ impl From<RequestError> for RestlessError {
             RequestError::Http(e) => RestlessError::Network(e),
             RequestError::InvalidUrl { url } => RestlessError::InvalidUrl { url },
             RequestError::Timeout { .. } => RestlessError::Timeout,
-            RequestError::InvalidHeader { key, value } => {
-                RestlessError::InvalidHeader {
-                    header: format!("{}: {}", key, value),
-                }
-            }
+            RequestError::InvalidHeader { key, value } => RestlessError::InvalidHeader {
+                header: format!("{}: {}", key, value),
+            },
             RequestError::BodySerialization(msg) => RestlessError::ResponseParsing { message: msg },
             RequestError::Connection { message } => RestlessError::ResponseParsing { message },
         }

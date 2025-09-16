@@ -1,28 +1,31 @@
 //! Individual UI components for the Restless application
-//! 
+//!
 //! This module contains the rendering logic for individual UI components,
 //! each focused on a specific part of the interface. This modular approach
 //! makes the code more maintainable and testable.
 
 use ratatui::{
     layout::{Alignment, Position, Rect},
-    style::{Color, Style, Modifier},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, Tabs},
+    widgets::{
+        Block, Borders, Clear, List, ListItem, Paragraph, Scrollbar, ScrollbarOrientation, Tabs,
+    },
     Frame,
 };
 
-use crate::app::{App, CurrentScreen, ValuesScreen};
 use super::{
-    create_block, create_url_layout, create_values_layout, create_response_layout,
-    method_text, truncate_text, TEXT_COLOR_MUTED, TEXT_COLOR_HIGHLIGHT,
+    create_block, create_response_layout, create_url_layout, create_values_layout, method_text,
+    truncate_text, TEXT_COLOR_HIGHLIGHT, TEXT_COLOR_MUTED,
 };
+use crate::app::{App, CurrentScreen, ValuesScreen};
 
 /// Renders the tab bar at the top of the application
 pub fn render_tabs(f: &mut Frame, app: &App, area: Rect) {
     let block = Block::default().borders(Borders::ALL);
 
-    let tab_titles: Vec<Line> = app.tabs
+    let tab_titles: Vec<Line> = app
+        .tabs
         .iter()
         .map(|tab| Line::from(tab.name.clone()))
         .collect();
@@ -41,7 +44,7 @@ pub fn render_url_input(f: &mut Frame, app: &App, area: Rect) {
 
     // Render method selector
     render_method_selector(f, app, method_area);
-    
+
     // Render URL input field
     render_url_field(f, app, url_area);
 
@@ -54,7 +57,10 @@ pub fn render_url_input(f: &mut Frame, app: &App, area: Rect) {
     if let CurrentScreen::EditingUrl = app.current_screen {
         let cursor_x = url_area.x + 6 + app.url_input.len() as u16; // "URL: " = 5 chars + space
         let cursor_y = url_area.y + 1;
-        f.set_cursor_position(Position { x: cursor_x, y: cursor_y });
+        f.set_cursor_position(Position {
+            x: cursor_x,
+            y: cursor_y,
+        });
     }
 }
 
@@ -62,7 +68,7 @@ pub fn render_url_input(f: &mut Frame, app: &App, area: Rect) {
 fn render_method_selector(f: &mut Frame, app: &App, area: Rect) {
     let is_active = matches!(app.current_screen, CurrentScreen::Url);
     let block = create_block("Method", is_active, false);
-    
+
     let method_paragraph = Paragraph::new(method_text(&app.selected_method))
         .block(block)
         .alignment(Alignment::Center);
@@ -90,7 +96,7 @@ fn render_url_field(f: &mut Frame, app: &App, area: Rect) {
 fn render_method_dropdown(f: &mut Frame, app: &App, method_area: Rect) {
     let methods = ["GET", "POST", "PUT", "DELETE"];
     let method_colors = [Color::Green, Color::Blue, Color::Yellow, Color::Red];
-    
+
     let dropdown_area = Rect {
         x: method_area.x,
         y: method_area.y + method_area.height,
@@ -129,11 +135,14 @@ fn render_method_dropdown(f: &mut Frame, app: &App, method_area: Rect) {
             Style::default()
                 .fg(method_colors[i])
                 .bg(bg_color)
-                .add_modifier(if is_selected { Modifier::BOLD } else { Modifier::empty() })
+                .add_modifier(if is_selected {
+                    Modifier::BOLD
+                } else {
+                    Modifier::empty()
+                }),
         );
 
-        let method_paragraph = Paragraph::new(method_span)
-            .alignment(Alignment::Center);
+        let method_paragraph = Paragraph::new(method_span).alignment(Alignment::Center);
         f.render_widget(method_paragraph, item_area);
     }
 }
@@ -178,7 +187,7 @@ fn render_values_tabs(f: &mut Frame, app: &App, area: Rect) {
 
 /// Renders the body content area
 fn render_body_content(f: &mut Frame, app: &App, area: Rect) {
-    let is_active = matches!(app.current_screen, CurrentScreen::Values) 
+    let is_active = matches!(app.current_screen, CurrentScreen::Values)
         && matches!(app.values_screen, ValuesScreen::Body);
     let is_editing = matches!(app.current_screen, CurrentScreen::EditingBody);
     let block = create_block("Request Body", is_active, is_editing);
@@ -202,22 +211,24 @@ fn render_body_content(f: &mut Frame, app: &App, area: Rect) {
         let last_line = lines.last().unwrap_or(&"");
         let cursor_y = area.y + 1 + lines.len().saturating_sub(1) as u16;
         let cursor_x = area.x + 1 + last_line.len() as u16;
-        f.set_cursor_position(Position { x: cursor_x, y: cursor_y });
+        f.set_cursor_position(Position {
+            x: cursor_x,
+            y: cursor_y,
+        });
     }
 }
 
 /// Renders the headers content area
 fn render_headers_content(f: &mut Frame, app: &App, area: Rect) {
-    let is_active = matches!(app.current_screen, CurrentScreen::Values) 
+    let is_active = matches!(app.current_screen, CurrentScreen::Values)
         && matches!(app.values_screen, ValuesScreen::Headers);
     let is_editing = matches!(app.current_screen, CurrentScreen::EditingHeaders);
     let block = create_block("Headers", is_active, is_editing);
 
-    let mut items: Vec<ListItem> = app.headers_input
+    let mut items: Vec<ListItem> = app
+        .headers_input
         .iter()
-        .map(|(key, value)| {
-            ListItem::new(Line::from(format!("{}: {}", key, value)))
-        })
+        .map(|(key, value)| ListItem::new(Line::from(format!("{}: {}", key, value))))
         .collect();
 
     // Add current input line if editing
@@ -229,13 +240,15 @@ fn render_headers_content(f: &mut Frame, app: &App, area: Rect) {
         };
         items.push(ListItem::new(Line::from(Span::styled(
             current_input,
-            Style::default().fg(TEXT_COLOR_HIGHLIGHT)
+            Style::default().fg(TEXT_COLOR_HIGHLIGHT),
         ))));
     } else if items.is_empty() {
         if is_active {
             items.push(ListItem::new(Line::from("Press 'i' to add headers...")));
             items.push(ListItem::new(Line::from("Format: Key: Value")));
-            items.push(ListItem::new(Line::from("Example: Content-Type: application/json")));
+            items.push(ListItem::new(Line::from(
+                "Example: Content-Type: application/json",
+            )));
             items.push(ListItem::new(Line::from("Use h/l to switch tabs")));
         } else {
             items.push(ListItem::new(Line::from("No headers")));
@@ -248,16 +261,15 @@ fn render_headers_content(f: &mut Frame, app: &App, area: Rect) {
 
 /// Renders the parameters content area
 fn render_params_content(f: &mut Frame, app: &App, area: Rect) {
-    let is_active = matches!(app.current_screen, CurrentScreen::Values) 
+    let is_active = matches!(app.current_screen, CurrentScreen::Values)
         && matches!(app.values_screen, ValuesScreen::Params);
     let is_editing = matches!(app.current_screen, CurrentScreen::EditingParams);
     let block = create_block("Query Parameters", is_active, is_editing);
 
-    let mut items: Vec<ListItem> = app.params_input
+    let mut items: Vec<ListItem> = app
+        .params_input
         .iter()
-        .map(|(key, value)| {
-            ListItem::new(Line::from(format!("{}={}", key, value)))
-        })
+        .map(|(key, value)| ListItem::new(Line::from(format!("{}={}", key, value))))
         .collect();
 
     // Add current input line if editing
@@ -269,7 +281,7 @@ fn render_params_content(f: &mut Frame, app: &App, area: Rect) {
         };
         items.push(ListItem::new(Line::from(Span::styled(
             current_input,
-            Style::default().fg(TEXT_COLOR_HIGHLIGHT)
+            Style::default().fg(TEXT_COLOR_HIGHLIGHT),
         ))));
     } else if items.is_empty() {
         if is_active {
@@ -315,9 +327,14 @@ fn render_response_tabs(f: &mut Frame, app: &App, area: Rect) {
 }
 
 /// Renders the response content with scrolling
-fn render_response_content(f: &mut Frame, app: &App, response: &crate::logic::response::Response, area: Rect) {
+fn render_response_content(
+    f: &mut Frame,
+    app: &App,
+    response: &crate::logic::response::Response,
+    area: Rect,
+) {
     let is_active = matches!(app.current_screen, CurrentScreen::Response);
-    
+
     // Status code in title
     let title = format!("Response - Status: {}", response.status_code);
     let block = create_block(&title, is_active, false);
@@ -328,14 +345,16 @@ fn render_response_content(f: &mut Frame, app: &App, response: &crate::logic::re
         if response.headers.is_empty() {
             vec![Line::from("No headers")]
         } else {
-            response.headers
+            response
+                .headers
                 .iter()
                 .map(|(k, v)| Line::from(format!("{}: {}", k, v)))
                 .collect()
         }
     } else {
         // Body
-        response.body
+        response
+            .body
             .lines()
             .map(|line| Line::from(line.to_string()))
             .collect()
@@ -350,7 +369,9 @@ fn render_response_content(f: &mut Frame, app: &App, response: &crate::logic::re
     // Render scrollbar for body content
     if app.response_tab_selected == 1 && !response.body.is_empty() {
         let content_height = response.body.lines().count();
-        let mut scroll_state = app.response_scroll_state.clone()
+        let mut scroll_state = app
+            .response_scroll_state
+            .clone()
             .content_length(content_height);
 
         f.render_stateful_widget(
@@ -367,13 +388,13 @@ fn render_response_content(f: &mut Frame, app: &App, response: &crate::logic::re
 fn render_empty_response(f: &mut Frame, app: &App, area: Rect) {
     let is_active = matches!(app.current_screen, CurrentScreen::Response);
     let block = create_block("Response", is_active, false);
-    
+
     let help_text = if matches!(app.current_screen, CurrentScreen::Response) {
         "No response yet.\n\nPress Enter to send request\nPress ? for help"
     } else {
         "No response yet."
     };
-    
+
     let paragraph = Paragraph::new(help_text)
         .block(block)
         .alignment(Alignment::Center);
@@ -383,14 +404,14 @@ fn render_empty_response(f: &mut Frame, app: &App, area: Rect) {
 /// Renders the status bar at the bottom
 pub fn render_status_bar(f: &mut Frame, app: &App, area: Rect) {
     let help_text = "Press ? for help | Enter: Send Request | q: Quit";
-    
+
     // Show current tab info if multiple tabs
     let tab_info = if app.tabs.len() > 1 {
         format!(" | Tab {}/{}", app.selected_tab + 1, app.tabs.len())
     } else {
         String::new()
     };
-    
+
     // Show current screen info
     let screen_info = match app.current_screen {
         CurrentScreen::EditingUrl => " | Editing URL",
@@ -400,7 +421,7 @@ pub fn render_status_bar(f: &mut Frame, app: &App, area: Rect) {
         CurrentScreen::Help => " | Help",
         _ => "",
     };
-    
+
     let status_text = format!("{}{}{}", help_text, tab_info, screen_info);
     let truncated_text = truncate_text(&status_text, area.width.saturating_sub(4) as usize);
 
@@ -426,9 +447,11 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let app = create_test_app();
 
-        terminal.draw(|f| {
-            render_tabs(f, &app, f.area());
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                render_tabs(f, &app, f.area());
+            })
+            .unwrap();
     }
 
     #[test]
@@ -437,9 +460,11 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let app = create_test_app();
 
-        terminal.draw(|f| {
-            render_url_input(f, &app, f.area());
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                render_url_input(f, &app, f.area());
+            })
+            .unwrap();
     }
 
     #[test]
@@ -448,9 +473,11 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let app = create_test_app();
 
-        terminal.draw(|f| {
-            render_values_section(f, &app, f.area());
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                render_values_section(f, &app, f.area());
+            })
+            .unwrap();
     }
 
     #[test]
@@ -459,9 +486,11 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let app = create_test_app();
 
-        terminal.draw(|f| {
-            render_response_section(f, &app, f.area());
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                render_response_section(f, &app, f.area());
+            })
+            .unwrap();
     }
 
     #[test]
@@ -470,8 +499,10 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let app = create_test_app();
 
-        terminal.draw(|f| {
-            render_status_bar(f, &app, f.area());
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                render_status_bar(f, &app, f.area());
+            })
+            .unwrap();
     }
 }

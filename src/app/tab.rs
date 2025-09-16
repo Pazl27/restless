@@ -17,8 +17,7 @@ impl Tab {
                 body: None,
                 params: vec![],
             },
-            response: None
-
+            response: None,
         }
     }
 

@@ -1,21 +1,21 @@
 //! Popup components for modal dialogs and overlays
-//! 
+//!
 //! This module contains popup windows that appear over the main UI,
 //! including help screens, error dialogs, and confirmation dialogs.
 
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
-    style::{Color, Style, Modifier},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
     Frame,
 };
 
-use crate::app::App;
 use super::{
-    create_error_block, create_popup_layout, create_fixed_popup_layout,
-    TEXT_COLOR_HIGHLIGHT, TEXT_COLOR_MUTED, TEXT_COLOR_NORMAL,
+    create_error_block, create_fixed_popup_layout, create_popup_layout, TEXT_COLOR_HIGHLIGHT,
+    TEXT_COLOR_MUTED, TEXT_COLOR_NORMAL,
 };
+use crate::app::App;
 
 /// Renders the help popup with key bindings and navigation help
 pub fn render_help_popup(f: &mut Frame, app: &App) {
@@ -28,7 +28,7 @@ pub fn render_help_popup(f: &mut Frame, app: &App) {
     // Create help content
     let help_items = app.get_help_content();
     let mut lines = Vec::new();
-    
+
     for (key, description) in help_items.iter().skip(app.help_scroll) {
         if key.is_empty() && description.is_empty() {
             lines.push(Line::from(""));
@@ -38,7 +38,7 @@ pub fn render_help_popup(f: &mut Frame, app: &App) {
                 key.to_string(),
                 Style::default()
                     .fg(TEXT_COLOR_HIGHLIGHT)
-                    .add_modifier(Modifier::BOLD)
+                    .add_modifier(Modifier::BOLD),
             )));
         } else {
             // Key binding
@@ -47,12 +47,12 @@ pub fn render_help_popup(f: &mut Frame, app: &App) {
                     format!("{:15}", key),
                     Style::default()
                         .fg(Color::Green)
-                        .add_modifier(Modifier::BOLD)
+                        .add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" "),
                 Span::styled(
                     description.to_string(),
-                    Style::default().fg(TEXT_COLOR_NORMAL)
+                    Style::default().fg(TEXT_COLOR_NORMAL),
                 ),
             ]));
         }
@@ -82,14 +82,14 @@ fn render_help_scroll_indicator(f: &mut Frame, app: &App, popup_area: Rect, tota
             app.help_scroll + 1,
             total_items
         );
-        
+
         let scroll_area = Rect {
             x: popup_area.x + 2,
             y: popup_area.y + popup_area.height.saturating_sub(1),
             width: popup_area.width.saturating_sub(4),
             height: 1,
         };
-        
+
         let scroll_text = Paragraph::new(scroll_info)
             .style(Style::default().fg(TEXT_COLOR_MUTED))
             .alignment(Alignment::Center);
@@ -126,23 +126,23 @@ pub fn render_error_popup(f: &mut Frame, error_message: &str) {
 /// Wraps error text to fit within the popup width
 fn wrap_error_text(text: &str, max_width: usize) -> Vec<Line> {
     let mut lines = Vec::new();
-    
+
     for paragraph in text.split('\n') {
         if paragraph.is_empty() {
             lines.push(Line::from(""));
             continue;
         }
-        
+
         let words: Vec<&str> = paragraph.split_whitespace().collect();
         let mut current_line = String::new();
-        
+
         for word in words {
             let test_line = if current_line.is_empty() {
                 word.to_string()
             } else {
                 format!("{} {}", current_line, word)
             };
-            
+
             if test_line.len() <= max_width {
                 current_line = test_line;
             } else {
@@ -152,12 +152,12 @@ fn wrap_error_text(text: &str, max_width: usize) -> Vec<Line> {
                 current_line = word.to_string();
             }
         }
-        
+
         if !current_line.is_empty() {
             lines.push(Line::from(current_line));
         }
     }
-    
+
     lines
 }
 
@@ -169,7 +169,7 @@ fn render_error_close_instruction(f: &mut Frame, popup_area: Rect) {
         width: popup_area.width.saturating_sub(4),
         height: 1,
     };
-    
+
     let instruction_text = Paragraph::new("Press any key to dismiss")
         .style(Style::default().fg(TEXT_COLOR_MUTED))
         .alignment(Alignment::Center);
@@ -187,8 +187,8 @@ pub fn render_confirmation_popup(f: &mut Frame, title: &str, message: &str, sele
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Min(5),      // Message area
-            Constraint::Length(3),   // Button area
+            Constraint::Min(5),    // Message area
+            Constraint::Length(3), // Button area
         ])
         .split(popup_area);
 
@@ -214,10 +214,7 @@ pub fn render_confirmation_popup(f: &mut Frame, title: &str, message: &str, sele
 fn render_confirmation_buttons(f: &mut Frame, area: Rect, yes_selected: bool) {
     let button_layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
-        ])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
     // Yes button
@@ -307,7 +304,7 @@ pub fn render_info_popup(f: &mut Frame, title: &str, message: &str) {
         width: popup_area.width.saturating_sub(4),
         height: 1,
     };
-    
+
     let instruction_text = Paragraph::new("Press any key to continue")
         .style(Style::default().fg(TEXT_COLOR_MUTED))
         .alignment(Alignment::Center);
@@ -317,14 +314,14 @@ pub fn render_info_popup(f: &mut Frame, title: &str, message: &str) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ratatui::{backend::TestBackend, Terminal};
     use crate::app::App;
+    use ratatui::{backend::TestBackend, Terminal};
 
     #[test]
     fn test_wrap_error_text() {
         let text = "This is a very long error message that should be wrapped";
         let lines = wrap_error_text(text, 20);
-        
+
         assert!(!lines.is_empty());
         for line in &lines {
             assert!(line.width() <= 20);
@@ -335,7 +332,7 @@ mod tests {
     fn test_wrap_error_text_with_newlines() {
         let text = "Line 1\nLine 2\nLine 3";
         let lines = wrap_error_text(text, 50);
-        
+
         assert_eq!(lines.len(), 3);
     }
 
@@ -345,9 +342,11 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let error_message = "Test error message";
 
-        terminal.draw(|f| {
-            render_error_popup(f, error_message);
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                render_error_popup(f, error_message);
+            })
+            .unwrap();
     }
 
     #[test]
@@ -356,9 +355,11 @@ mod tests {
         let mut terminal = Terminal::new(backend).unwrap();
         let app = App::new();
 
-        terminal.draw(|f| {
-            render_help_popup(f, &app);
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                render_help_popup(f, &app);
+            })
+            .unwrap();
     }
 
     #[test]
@@ -366,9 +367,11 @@ mod tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
-        terminal.draw(|f| {
-            render_confirmation_popup(f, "Confirm", "Are you sure?", true);
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                render_confirmation_popup(f, "Confirm", "Are you sure?", true);
+            })
+            .unwrap();
     }
 
     #[test]
@@ -376,9 +379,11 @@ mod tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
-        terminal.draw(|f| {
-            render_loading_popup(f, "Sending request...", 0);
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                render_loading_popup(f, "Sending request...", 0);
+            })
+            .unwrap();
     }
 
     #[test]
@@ -386,8 +391,10 @@ mod tests {
         let backend = TestBackend::new(80, 24);
         let mut terminal = Terminal::new(backend).unwrap();
 
-        terminal.draw(|f| {
-            render_info_popup(f, "Information", "This is an info message");
-        }).unwrap();
+        terminal
+            .draw(|f| {
+                render_info_popup(f, "Information", "This is an info message");
+            })
+            .unwrap();
     }
 }

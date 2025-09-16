@@ -1,5 +1,5 @@
 //! Tab management handlers for the Restless application
-//! 
+//!
 //! This module contains handlers for tab-related operations such as creating,
 //! closing, and switching between tabs.
 
@@ -47,17 +47,17 @@ pub fn handle_switch_to_tab(app: &mut App, index: usize) -> Result<Option<String
     if index >= app.tabs.len() {
         return Ok(Some(format!("Invalid tab index: {}", index)));
     }
-    
+
     if let Err(e) = app.save_current_tab_state() {
         return Ok(Some(format!("Failed to save current tab: {}", e)));
     }
-    
+
     app.selected_tab = index;
-    
+
     if let Err(e) = app.restore_current_tab_state() {
         return Ok(Some(format!("Failed to restore tab: {}", e)));
     }
-    
+
     Ok(None)
 }
 
@@ -69,7 +69,7 @@ mod tests {
     fn test_handle_new_tab() {
         let mut app = App::new();
         let initial_count = app.tabs.len();
-        
+
         let result = handle_new_tab(&mut app).unwrap();
         assert!(result.is_none());
         assert_eq!(app.tabs.len(), initial_count + 1);
@@ -79,7 +79,7 @@ mod tests {
     fn test_handle_close_tab_multiple_tabs() {
         let mut app = App::new();
         app.add_new_tab().unwrap();
-        
+
         let result = handle_close_tab(&mut app).unwrap();
         assert!(result.is_none());
         assert_eq!(app.tabs.len(), 1);
@@ -88,7 +88,7 @@ mod tests {
     #[test]
     fn test_handle_close_tab_last_tab() {
         let mut app = App::new();
-        
+
         let result = handle_close_tab(&mut app).unwrap();
         assert!(result.is_some());
         assert_eq!(app.tabs.len(), 1);

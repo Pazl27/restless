@@ -1,14 +1,12 @@
 //! Layout management for the Restless UI
-//! 
+//!
 //! This module handles the creation and management of different UI layouts,
 //! providing a clean separation between layout logic and component rendering.
 
-use ratatui::{
-    layout::{Constraint, Direction, Layout, Rect},
-};
+use ratatui::layout::{Constraint, Direction, Layout, Rect};
 
 /// Main application layout structure
-/// 
+///
 /// This struct holds all the areas for the main application components,
 /// making it easy to pass layout information between functions.
 #[derive(Debug, Clone)]
@@ -21,7 +19,7 @@ pub struct MainLayout {
 }
 
 /// Creates the main application layout
-/// 
+///
 /// This function splits the terminal area into sections for different
 /// UI components. The layout is responsive and will adjust to different
 /// terminal sizes.
@@ -29,11 +27,11 @@ pub fn create_main_layout(area: Rect) -> MainLayout {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),     // Tabs section
-            Constraint::Length(3),     // URL input section
-            Constraint::Min(8),        // Values section (expandable)
-            Constraint::Min(8),        // Response section (expandable)
-            Constraint::Length(3),     // Status bar
+            Constraint::Length(3), // Tabs section
+            Constraint::Length(3), // URL input section
+            Constraint::Min(8),    // Values section (expandable)
+            Constraint::Min(8),    // Response section (expandable)
+            Constraint::Length(3), // Status bar
         ])
         .split(area);
 
@@ -47,14 +45,14 @@ pub fn create_main_layout(area: Rect) -> MainLayout {
 }
 
 /// Creates a two-column layout for the URL input section
-/// 
+///
 /// Splits the URL area into method selector and URL input field.
 pub fn create_url_layout(area: Rect) -> (Rect, Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Length(12),    // Method selector
-            Constraint::Min(20),       // URL input field
+            Constraint::Length(12), // Method selector
+            Constraint::Min(20),    // URL input field
         ])
         .split(area);
 
@@ -62,14 +60,14 @@ pub fn create_url_layout(area: Rect) -> (Rect, Rect) {
 }
 
 /// Creates layout for the values section with tabs
-/// 
+///
 /// Separates the tab bar from the content area in the values section.
 pub fn create_values_layout(area: Rect) -> (Rect, Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(3),     // Tab bar
-            Constraint::Min(5),        // Content area
+            Constraint::Length(3), // Tab bar
+            Constraint::Min(5),    // Content area
         ])
         .split(area);
 
@@ -77,14 +75,14 @@ pub fn create_values_layout(area: Rect) -> (Rect, Rect) {
 }
 
 /// Creates layout for the response section with tabs
-/// 
+///
 /// Separates the tab bar from the content area in the response section.
 pub fn create_response_layout(area: Rect) -> (Rect, Rect) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Length(1),     // Tab bar (smaller than values)
-            Constraint::Min(7),        // Content area with scrollbar
+            Constraint::Length(1), // Tab bar (smaller than values)
+            Constraint::Min(7),    // Content area with scrollbar
         ])
         .split(area);
 
@@ -92,7 +90,7 @@ pub fn create_response_layout(area: Rect) -> (Rect, Rect) {
 }
 
 /// Creates a popup layout with specified dimensions
-/// 
+///
 /// This is used for dialogs, help screens, and error messages.
 pub fn create_popup_layout(area: Rect, width_percent: u16, height_percent: u16) -> Rect {
     let popup_layout = Layout::default()
@@ -115,12 +113,12 @@ pub fn create_popup_layout(area: Rect, width_percent: u16, height_percent: u16) 
 }
 
 /// Creates a fixed-size popup layout
-/// 
+///
 /// This is useful when you know the exact size needed for a popup.
 pub fn create_fixed_popup_layout(area: Rect, width: u16, height: u16) -> Rect {
     let popup_width = std::cmp::min(width, area.width.saturating_sub(2));
     let popup_height = std::cmp::min(height, area.height.saturating_sub(2));
-    
+
     Rect {
         x: (area.width.saturating_sub(popup_width)) / 2,
         y: (area.height.saturating_sub(popup_height)) / 2,
@@ -191,9 +189,9 @@ pub fn create_responsive_layout(area: Rect) -> Result<MainLayout, String> {
     let (values_min, response_min) = if area.height >= 30 {
         (10, 10) // Larger areas for bigger terminals
     } else if area.height >= 24 {
-        (8, 8)   // Standard areas
+        (8, 8) // Standard areas
     } else {
-        (5, 5)   // Minimal areas for small terminals
+        (5, 5) // Minimal areas for small terminals
     };
 
     let chunks = Layout::default()
@@ -244,7 +242,7 @@ mod tests {
     #[test]
     fn test_validate_terminal_size() {
         let config = LayoutConfig::default();
-        
+
         // Valid size
         let valid_area = Rect::new(0, 0, 80, 24);
         assert!(validate_terminal_size(valid_area, &config).is_ok());
@@ -265,8 +263,8 @@ mod tests {
 
         assert_eq!(popup.width, 80);
         assert_eq!(popup.height, 30); // 60% of 50
-        assert_eq!(popup.x, 10);       // Centered
-        assert_eq!(popup.y, 10);       // Centered
+        assert_eq!(popup.x, 10); // Centered
+        assert_eq!(popup.y, 10); // Centered
     }
 
     #[test]

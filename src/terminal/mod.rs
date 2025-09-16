@@ -1,5 +1,5 @@
 //! Terminal management module for Restless
-//! 
+//!
 //! This module handles all terminal-related functionality including initialization,
 //! cleanup, and error handling. It provides a clean abstraction over the
 //! crossterm terminal management functions.
@@ -30,21 +30,18 @@ impl TerminalManager {
     /// Sets up the terminal for the application
     fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stderr>>, RestlessError> {
         // Enable raw mode
-        enable_raw_mode().map_err(|e| {
-            RestlessError::terminal(format!("Failed to enable raw mode: {}", e))
-        })?;
+        enable_raw_mode()
+            .map_err(|e| RestlessError::terminal(format!("Failed to enable raw mode: {}", e)))?;
 
         // Setup terminal backend
         let mut stderr = io::stderr();
-        execute!(stderr, EnterAlternateScreen, EnableMouseCapture).map_err(|e| {
-            RestlessError::terminal(format!("Failed to setup terminal: {}", e))
-        })?;
+        execute!(stderr, EnterAlternateScreen, EnableMouseCapture)
+            .map_err(|e| RestlessError::terminal(format!("Failed to setup terminal: {}", e)))?;
 
         // Create terminal instance
         let backend = CrosstermBackend::new(stderr);
-        let terminal = Terminal::new(backend).map_err(|e| {
-            RestlessError::terminal(format!("Failed to create terminal: {}", e))
-        })?;
+        let terminal = Terminal::new(backend)
+            .map_err(|e| RestlessError::terminal(format!("Failed to create terminal: {}", e)))?;
 
         Ok(terminal)
     }
@@ -61,9 +58,10 @@ impl TerminalManager {
 
     /// Validates that the terminal size is adequate for the application
     pub fn validate_size(&self) -> Result<(), RestlessError> {
-        let size = self.terminal.size().map_err(|e| {
-            RestlessError::terminal(format!("Failed to get terminal size: {}", e))
-        })?;
+        let size = self
+            .terminal
+            .size()
+            .map_err(|e| RestlessError::terminal(format!("Failed to get terminal size: {}", e)))?;
 
         const MIN_WIDTH: u16 = 80;
         const MIN_HEIGHT: u16 = 24;
@@ -93,9 +91,8 @@ impl TerminalManager {
     /// Internal cleanup function
     fn cleanup_terminal(&mut self) -> Result<(), RestlessError> {
         // Disable raw mode
-        disable_raw_mode().map_err(|e| {
-            RestlessError::terminal(format!("Failed to disable raw mode: {}", e))
-        })?;
+        disable_raw_mode()
+            .map_err(|e| RestlessError::terminal(format!("Failed to disable raw mode: {}", e)))?;
 
         // Restore terminal
         execute!(
@@ -103,14 +100,12 @@ impl TerminalManager {
             DisableMouseCapture,
             LeaveAlternateScreen
         )
-        .map_err(|e| {
-            RestlessError::terminal(format!("Failed to cleanup terminal: {}", e))
-        })?;
+        .map_err(|e| RestlessError::terminal(format!("Failed to cleanup terminal: {}", e)))?;
 
         // Show cursor
-        self.terminal.show_cursor().map_err(|e| {
-            RestlessError::terminal(format!("Failed to show cursor: {}", e))
-        })?;
+        self.terminal
+            .show_cursor()
+            .map_err(|e| RestlessError::terminal(format!("Failed to show cursor: {}", e)))?;
 
         Ok(())
     }
@@ -163,17 +158,15 @@ impl ConfigurableTerminalManager {
         config: &TerminalConfig,
     ) -> Result<Terminal<CrosstermBackend<Stderr>>, RestlessError> {
         // Enable raw mode
-        enable_raw_mode().map_err(|e| {
-            RestlessError::terminal(format!("Failed to enable raw mode: {}", e))
-        })?;
+        enable_raw_mode()
+            .map_err(|e| RestlessError::terminal(format!("Failed to enable raw mode: {}", e)))?;
 
         let mut stderr = io::stderr();
 
         // Setup terminal features based on config
         if config.use_alternate_screen && config.enable_mouse {
-            execute!(stderr, EnterAlternateScreen, EnableMouseCapture).map_err(|e| {
-                RestlessError::terminal(format!("Failed to setup terminal: {}", e))
-            })?;
+            execute!(stderr, EnterAlternateScreen, EnableMouseCapture)
+                .map_err(|e| RestlessError::terminal(format!("Failed to setup terminal: {}", e)))?;
         } else if config.use_alternate_screen {
             execute!(stderr, EnterAlternateScreen).map_err(|e| {
                 RestlessError::terminal(format!("Failed to enter alternate screen: {}", e))
@@ -186,9 +179,8 @@ impl ConfigurableTerminalManager {
 
         // Create terminal
         let backend = CrosstermBackend::new(stderr);
-        let terminal = Terminal::new(backend).map_err(|e| {
-            RestlessError::terminal(format!("Failed to create terminal: {}", e))
-        })?;
+        let terminal = Terminal::new(backend)
+            .map_err(|e| RestlessError::terminal(format!("Failed to create terminal: {}", e)))?;
 
         Ok(terminal)
     }
@@ -205,9 +197,10 @@ impl ConfigurableTerminalManager {
 
     /// Validates terminal size against configuration
     pub fn validate_size(&self) -> Result<(), RestlessError> {
-        let size = self.terminal.size().map_err(|e| {
-            RestlessError::terminal(format!("Failed to get terminal size: {}", e))
-        })?;
+        let size = self
+            .terminal
+            .size()
+            .map_err(|e| RestlessError::terminal(format!("Failed to get terminal size: {}", e)))?;
 
         if size.width < self.config.min_width {
             return Err(RestlessError::terminal(format!(
@@ -233,9 +226,8 @@ impl ConfigurableTerminalManager {
 
     fn cleanup_terminal(&mut self) -> Result<(), RestlessError> {
         // Disable raw mode
-        disable_raw_mode().map_err(|e| {
-            RestlessError::terminal(format!("Failed to disable raw mode: {}", e))
-        })?;
+        disable_raw_mode()
+            .map_err(|e| RestlessError::terminal(format!("Failed to disable raw mode: {}", e)))?;
 
         // Cleanup based on what was enabled
         if self.config.use_alternate_screen && self.config.enable_mouse {
@@ -244,9 +236,7 @@ impl ConfigurableTerminalManager {
                 DisableMouseCapture,
                 LeaveAlternateScreen
             )
-            .map_err(|e| {
-                RestlessError::terminal(format!("Failed to cleanup terminal: {}", e))
-            })?;
+            .map_err(|e| RestlessError::terminal(format!("Failed to cleanup terminal: {}", e)))?;
         } else if self.config.use_alternate_screen {
             execute!(self.terminal.backend_mut(), LeaveAlternateScreen).map_err(|e| {
                 RestlessError::terminal(format!("Failed to leave alternate screen: {}", e))
@@ -258,9 +248,9 @@ impl ConfigurableTerminalManager {
         }
 
         // Show cursor
-        self.terminal.show_cursor().map_err(|e| {
-            RestlessError::terminal(format!("Failed to show cursor: {}", e))
-        })?;
+        self.terminal
+            .show_cursor()
+            .map_err(|e| RestlessError::terminal(format!("Failed to show cursor: {}", e)))?;
 
         Ok(())
     }
@@ -280,9 +270,8 @@ pub mod utils {
 
     /// Gets the current terminal size
     pub fn get_terminal_size() -> Result<(u16, u16), RestlessError> {
-        let size = crossterm::terminal::size().map_err(|e| {
-            RestlessError::terminal(format!("Failed to get terminal size: {}", e))
-        })?;
+        let size = crossterm::terminal::size()
+            .map_err(|e| RestlessError::terminal(format!("Failed to get terminal size: {}", e)))?;
         Ok((size.0, size.1))
     }
 

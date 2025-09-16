@@ -1,5 +1,5 @@
 //! Keyboard event handlers for the main application screens
-//! 
+//!
 //! This module handles keyboard events for the main application screens,
 //! including navigation between sections, method selection, and input handling.
 
@@ -25,45 +25,35 @@ pub async fn handle_main_screen_keys(app: &mut App, key: KeyEvent) -> Result<Opt
             navigate_section_up(app);
             Ok(None)
         }
-        
+
         // URL editing
         KeyCode::Char('u') => {
             app.current_screen = CurrentScreen::EditingUrl;
             Ok(None)
         }
-        
+
         // Method selection
         KeyCode::Char('m') => {
             open_method_dropdown(app);
             Ok(None)
         }
-        
+
         // Send request
-        KeyCode::Enter => {
-            handle_send_request(app).await
-        }
-        
+        KeyCode::Enter => handle_send_request(app).await,
+
         // Tab management
-        KeyCode::Char('t') => {
-            handle_new_tab(app)
-        }
-        KeyCode::Char('x') => {
-            handle_close_tab(app)
-        }
-        KeyCode::Tab => {
-            handle_next_tab(app)
-        }
-        KeyCode::BackTab => {
-            handle_prev_tab(app)
-        }
-        
+        KeyCode::Char('t') => handle_new_tab(app),
+        KeyCode::Char('x') => handle_close_tab(app),
+        KeyCode::Tab => handle_next_tab(app),
+        KeyCode::BackTab => handle_prev_tab(app),
+
         // Screen-specific handlers
         _ => match app.current_screen {
             CurrentScreen::Values => handle_values_screen_keys(app, key).await,
             CurrentScreen::Response => handle_response_screen_keys(app, key).await,
             CurrentScreen::Url => handle_url_screen_keys(app, key).await,
             _ => Ok(None),
-        }
+        },
     }
 }
 
@@ -125,7 +115,7 @@ async fn handle_values_screen_keys(app: &mut App, key: KeyEvent) -> Result<Optio
             };
             Ok(None)
         }
-        
+
         // Enter editing mode
         KeyCode::Char('i') => {
             match app.values_screen {
@@ -141,7 +131,7 @@ async fn handle_values_screen_keys(app: &mut App, key: KeyEvent) -> Result<Optio
             }
             Ok(None)
         }
-        
+
         _ => Ok(None),
     }
 }
@@ -158,7 +148,7 @@ async fn handle_response_screen_keys(app: &mut App, key: KeyEvent) -> Result<Opt
             app.response_tab_selected = 1; // Body
             Ok(None)
         }
-        
+
         // Scroll response content
         KeyCode::Char('j') => {
             if app.response_tab_selected == 1 {
@@ -172,7 +162,7 @@ async fn handle_response_screen_keys(app: &mut App, key: KeyEvent) -> Result<Opt
             }
             Ok(None)
         }
-        
+
         _ => Ok(None),
     }
 }
@@ -413,26 +403,26 @@ async fn handle_send_request(app: &mut App) -> Result<Option<String>> {
     if let Err(e) = app.validate_current_request() {
         return Ok(Some(format!("Validation error: {}", e)));
     }
-    
+
     // Send request with error handling
     match app.tabs[app.selected_tab].request.send().await {
         Ok((status_code, headers, body)) => {
-            match crate::logic::response::Response::new(status_code, headers.clone(), body.clone()) {
+            match crate::logic::response::Response::new(status_code, headers.clone(), body.clone())
+            {
                 Ok(response) => {
                     app.tabs[app.selected_tab].response = Some(response);
                     Ok(None)
                 }
                 Err(e) => {
                     // Still create response with unchecked method for display
-                    let response = crate::logic::response::Response::new_unchecked(status_code, headers, body);
+                    let response =
+                        crate::logic::response::Response::new_unchecked(status_code, headers, body);
                     app.tabs[app.selected_tab].response = Some(response);
                     Ok(Some(format!("Response parsing error: {}", e)))
                 }
             }
         }
-        Err(e) => {
-            Ok(Some(format!("Request failed: {}", e)))
-        }
+        Err(e) => Ok(Some(format!("Request failed: {}", e))),
     }
 }
 
@@ -512,7 +502,7 @@ mod tests {
     #[tokio::test]
     async fn test_url_editing() {
         let mut app = App::new();
-        
+
         // Start editing
         let key = create_key_event(KeyCode::Char('u'));
         let result = handle_main_screen_keys(&mut app, key).await.unwrap();
@@ -535,7 +525,7 @@ mod tests {
     #[tokio::test]
     async fn test_method_dropdown() {
         let mut app = App::new();
-        
+
         // Open dropdown
         let key = create_key_event(KeyCode::Char('m'));
         let result = handle_main_screen_keys(&mut app, key).await.unwrap();
