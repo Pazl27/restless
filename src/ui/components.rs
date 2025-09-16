@@ -17,6 +17,7 @@ use ratatui::{
 use super::{
     create_block, create_response_layout, create_url_layout, create_values_layout, method_text,
     truncate_text, TEXT_COLOR_HIGHLIGHT, TEXT_COLOR_MUTED,
+    layouts::create_method_dropdown_layout,
 };
 use crate::app::{App, CurrentScreen, ValuesScreen};
 
@@ -97,12 +98,7 @@ fn render_method_dropdown(f: &mut Frame, app: &App, method_area: Rect) {
     let methods = ["GET", "POST", "PUT", "DELETE"];
     let method_colors = [Color::Green, Color::Blue, Color::Yellow, Color::Red];
 
-    let dropdown_area = Rect {
-        x: method_area.x,
-        y: method_area.y + method_area.height,
-        width: method_area.width,
-        height: methods.len() as u16 + 2,
-    };
+    let dropdown_area = create_method_dropdown_layout(method_area);
 
     // Clear background
     f.render_widget(Clear, dropdown_area);

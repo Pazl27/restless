@@ -3,6 +3,8 @@
 //! This module contains popup windows that appear over the main UI,
 //! including help screens, error dialogs, and confirmation dialogs.
 
+#![allow(dead_code)]
+
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
@@ -177,6 +179,7 @@ fn render_error_close_instruction(f: &mut Frame, popup_area: Rect) {
 }
 
 /// Renders a confirmation dialog with Yes/No options
+#[cfg(test)]
 pub fn render_confirmation_popup(f: &mut Frame, title: &str, message: &str, selected: bool) {
     let popup_area = create_fixed_popup_layout(f.area(), 50, 10);
 
@@ -253,6 +256,7 @@ fn render_confirmation_buttons(f: &mut Frame, area: Rect, yes_selected: bool) {
 }
 
 /// Renders a loading popup with a spinner
+#[cfg(test)]
 pub fn render_loading_popup(f: &mut Frame, message: &str, spinner_state: usize) {
     let popup_area = create_fixed_popup_layout(f.area(), 40, 6);
 
@@ -278,6 +282,7 @@ pub fn render_loading_popup(f: &mut Frame, message: &str, spinner_state: usize) 
 }
 
 /// Renders an information popup with just a message
+#[cfg(test)]
 pub fn render_info_popup(f: &mut Frame, title: &str, message: &str) {
     let popup_area = create_fixed_popup_layout(f.area(), 50, 8);
 

@@ -85,6 +85,7 @@ impl Response {
         Ok(headers)
     }
 
+    #[cfg(test)]
     pub fn is_json(&self) -> bool {
         self.headers.iter().any(|(key, value)| {
             key.to_lowercase() == "content-type"
@@ -92,6 +93,7 @@ impl Response {
         })
     }
 
+    #[cfg(test)]
     pub fn is_xml(&self) -> bool {
         self.headers.iter().any(|(key, value)| {
             key.to_lowercase() == "content-type"
@@ -100,6 +102,7 @@ impl Response {
         })
     }
 
+    #[cfg(test)]
     pub fn content_type(&self) -> Option<&str> {
         self.headers
             .iter()
@@ -107,6 +110,7 @@ impl Response {
             .map(|(_, value)| value.as_str())
     }
 
+    #[cfg(test)]
     pub fn content_length(&self) -> Option<usize> {
         self.headers
             .iter()

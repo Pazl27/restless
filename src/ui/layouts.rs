@@ -129,25 +129,29 @@ pub fn create_fixed_popup_layout(area: Rect, width: u16, height: u16) -> Rect {
 
 /// Creates a method dropdown layout positioned below the method selector
 pub fn create_method_dropdown_layout(method_area: Rect) -> Rect {
+    let methods_count = 4; // GET, POST, PUT, DELETE
     Rect {
         x: method_area.x,
         y: method_area.y + method_area.height,
         width: method_area.width,
-        height: 6, // Space for 4 methods + borders
+        height: methods_count + 2, // Space for methods + borders
     }
 }
 
 /// Layout configuration for different screen sizes
 #[derive(Debug, Clone)]
+#[cfg(test)]
 pub struct LayoutConfig {
     pub min_width: u16,
     pub min_height: u16,
     pub tabs_height: u16,
     pub url_height: u16,
     pub status_height: u16,
+    #[allow(dead_code)]
     pub method_width: u16,
 }
 
+#[cfg(test)]
 impl Default for LayoutConfig {
     fn default() -> Self {
         Self {
@@ -162,6 +166,7 @@ impl Default for LayoutConfig {
 }
 
 /// Validates that the terminal area is large enough for the UI
+#[cfg(test)]
 pub fn validate_terminal_size(area: Rect, config: &LayoutConfig) -> Result<(), String> {
     if area.width < config.min_width {
         return Err(format!(
@@ -181,6 +186,7 @@ pub fn validate_terminal_size(area: Rect, config: &LayoutConfig) -> Result<(), S
 }
 
 /// Creates a responsive layout that adapts to the terminal size
+#[cfg(test)]
 pub fn create_responsive_layout(area: Rect) -> Result<MainLayout, String> {
     let config = LayoutConfig::default();
     validate_terminal_size(area, &config)?;
@@ -224,10 +230,25 @@ mod tests {
         let layout = create_main_layout(area);
 
         assert_eq!(layout.tabs_area.height, 3);
+        assert_eq!(layout.url_area.height, 2); // Ratatui adjusts to fit Min constraints
+        assert_eq!(layout.status_area.height, 3);
+        assert_eq!(layout.values_area.height, 8);
+        assert_eq!(layout.response_area.height, 8);
+    }
+
+    #[test]
+    fn test_create_main_layout_large_terminal() {
+        // Test with larger terminal to verify normal behavior
+        let area = Rect::new(0, 0, 80, 40);
+        let layout = create_main_layout(area);
+
+        assert_eq!(layout.tabs_area.height, 3);
         assert_eq!(layout.url_area.height, 3);
         assert_eq!(layout.status_area.height, 3);
         assert!(layout.values_area.height >= 8);
         assert!(layout.response_area.height >= 8);
+        // Should have extra space distributed between values and response
+        assert_eq!(layout.values_area.height + layout.response_area.height, 31); // 40 - 9 = 31
     }
 
     #[test]

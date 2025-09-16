@@ -184,6 +184,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore = "requires network access"]
     async fn test_send_request_get() {
         let req = Request {
             url: "http://httpbin.org/get".to_string(),
@@ -201,6 +202,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires network access"]
     async fn test_send_request_post_with_body() {
         let req = Request {
             url: "http://httpbin.org/post".to_string(),

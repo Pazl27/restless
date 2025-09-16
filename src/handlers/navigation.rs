@@ -3,10 +3,14 @@
 //! This module contains handlers for navigation between different screens
 //! and sections of the application.
 
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
 use crate::app::{App, CurrentScreen, ValuesScreen};
 use crate::error::Result;
 
 /// Handles navigation to the next section down
+#[cfg(test)]
 pub fn navigate_section_down(app: &mut App) -> Result<Option<String>> {
     app.current_screen = match app.current_screen {
         CurrentScreen::Url => CurrentScreen::Values,
@@ -17,6 +21,7 @@ pub fn navigate_section_down(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Handles navigation to the previous section up
+#[cfg(test)]
 pub fn navigate_section_up(app: &mut App) -> Result<Option<String>> {
     app.current_screen = match app.current_screen {
         CurrentScreen::Response => CurrentScreen::Values,
@@ -27,6 +32,7 @@ pub fn navigate_section_up(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Handles navigation between values tabs (left)
+#[cfg(test)]
 pub fn navigate_values_left(app: &mut App) -> Result<Option<String>> {
     if matches!(app.current_screen, CurrentScreen::Values) {
         app.values_screen = match app.values_screen {
@@ -39,6 +45,7 @@ pub fn navigate_values_left(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Handles navigation between values tabs (right)
+#[cfg(test)]
 pub fn navigate_values_right(app: &mut App) -> Result<Option<String>> {
     if matches!(app.current_screen, CurrentScreen::Values) {
         app.values_screen = match app.values_screen {
@@ -51,6 +58,7 @@ pub fn navigate_values_right(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Handles navigation between response tabs
+#[cfg(test)]
 pub fn navigate_response_tabs(app: &mut App, tab_index: usize) -> Result<Option<String>> {
     if matches!(app.current_screen, CurrentScreen::Response) {
         if tab_index < 2 {
@@ -61,6 +69,7 @@ pub fn navigate_response_tabs(app: &mut App, tab_index: usize) -> Result<Option<
 }
 
 /// Handles scrolling in the response section
+#[cfg(test)]
 pub fn scroll_response(app: &mut App, direction: ScrollDirection) -> Result<Option<String>> {
     if matches!(app.current_screen, CurrentScreen::Response) && app.response_tab_selected == 1 {
         match direction {
@@ -76,6 +85,7 @@ pub fn scroll_response(app: &mut App, direction: ScrollDirection) -> Result<Opti
 }
 
 /// Handles scrolling in the help section
+#[cfg(test)]
 pub fn scroll_help(app: &mut App, direction: ScrollDirection) -> Result<Option<String>> {
     if app.help_visible {
         let help_content = app.get_help_content();
@@ -94,6 +104,7 @@ pub fn scroll_help(app: &mut App, direction: ScrollDirection) -> Result<Option<S
 }
 
 /// Enters editing mode for the current context
+#[cfg(test)]
 pub fn enter_edit_mode(app: &mut App) -> Result<Option<String>> {
     match app.current_screen {
         CurrentScreen::Url => {
@@ -120,6 +131,7 @@ pub fn enter_edit_mode(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Exits editing mode and returns to the parent screen
+#[cfg(test)]
 pub fn exit_edit_mode(app: &mut App) -> Result<Option<String>> {
     match app.current_screen {
         CurrentScreen::EditingUrl => {
@@ -138,6 +150,7 @@ pub fn exit_edit_mode(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Toggles the help screen
+#[cfg(test)]
 pub fn toggle_help(app: &mut App) -> Result<Option<String>> {
     if app.help_visible {
         app.hide_help();
@@ -149,12 +162,14 @@ pub fn toggle_help(app: &mut App) -> Result<Option<String>> {
 
 /// Direction for scrolling operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg(test)]
 pub enum ScrollDirection {
     Up,
     Down,
 }
 
 /// Gets the current navigation context as a string for display
+#[cfg(test)]
 pub fn get_navigation_context(app: &App) -> String {
     match app.current_screen {
         CurrentScreen::Url => "URL Input".to_string(),

@@ -3,6 +3,8 @@
 //! This module contains all UI-related functionality, organized into separate
 //! components for better maintainability and testing.
 
+#![allow(unused_imports)]
+
 pub mod components;
 pub mod layouts;
 pub mod popups;
@@ -26,8 +28,11 @@ pub const BORDER_COLOR_ERROR: Color = Color::Red;
 
 pub const TEXT_COLOR_NORMAL: Color = Color::White;
 pub const TEXT_COLOR_HIGHLIGHT: Color = Color::Yellow;
+#[allow(dead_code)]
 pub const TEXT_COLOR_ERROR: Color = Color::Red;
+#[allow(dead_code)]
 pub const TEXT_COLOR_SUCCESS: Color = Color::Green;
+#[allow(dead_code)]
 pub const TEXT_COLOR_INFO: Color = Color::Blue;
 pub const TEXT_COLOR_MUTED: Color = Color::Gray;
 
@@ -56,28 +61,10 @@ pub fn create_error_block(title: &str) -> Block {
         .border_style(Style::default().fg(BORDER_COLOR_ERROR))
 }
 
-/// Utility function to calculate centered popup area
-pub fn centered_rect(percent_x: u16, percent_y: u16, area: Rect) -> Rect {
-    let popup_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage((100 - percent_y) / 2),
-            Constraint::Percentage(percent_y),
-            Constraint::Percentage((100 - percent_y) / 2),
-        ])
-        .split(area);
 
-    Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - percent_x) / 2),
-            Constraint::Percentage(percent_x),
-            Constraint::Percentage((100 - percent_x) / 2),
-        ])
-        .split(popup_layout[1])[1]
-}
 
 /// Utility function to calculate fixed size centered popup
+#[cfg(test)]
 pub fn centered_rect_fixed(width: u16, height: u16, area: Rect) -> Rect {
     let popup_width = std::cmp::min(width, area.width.saturating_sub(2));
     let popup_height = std::cmp::min(height, area.height.saturating_sub(2));
@@ -124,6 +111,7 @@ pub fn truncate_text(text: &str, max_width: usize) -> String {
 }
 
 /// Wraps text to multiple lines with a given width
+#[cfg(test)]
 pub fn wrap_text(text: &str, width: usize) -> Vec<String> {
     if width == 0 {
         return vec![text.to_string()];

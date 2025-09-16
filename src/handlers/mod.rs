@@ -4,6 +4,8 @@
 //! Each handler is responsible for processing specific types of events and
 //! updating the application state accordingly.
 
+#![allow(dead_code)]
+
 pub mod keyboard;
 pub mod navigation;
 pub mod request;
@@ -68,6 +70,7 @@ fn is_editing_mode(app: &App) -> bool {
 
 /// Event handler result type
 #[derive(Debug, Clone)]
+#[cfg(test)]
 pub enum EventResult {
     /// Continue processing normally
     Continue,
@@ -79,6 +82,7 @@ pub enum EventResult {
     Info(String),
 }
 
+#[cfg(test)]
 impl EventResult {
     pub fn error<S: Into<String>>(message: S) -> Self {
         Self::Error(message.into())

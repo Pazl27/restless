@@ -4,11 +4,15 @@
 //! sending, and response processing. It provides a clean interface between
 //! the application state and the HTTP client.
 
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
 use crate::app::App;
 use crate::error::{RestlessError, Result};
 use crate::logic::response::Response;
 
 /// Handles sending an HTTP request for the current tab
+#[cfg(test)]
 pub async fn send_current_request(app: &mut App) -> Result<Option<String>> {
     // Validate request before sending
     if let Err(e) = app.validate_current_request() {
@@ -34,6 +38,7 @@ pub async fn send_current_request(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Synchronizes the request object with the current application state
+#[cfg(test)]
 fn sync_request_with_app_state(app: &mut App) -> Result<()> {
     let current_tab = app
         .tabs
@@ -55,6 +60,7 @@ fn sync_request_with_app_state(app: &mut App) -> Result<()> {
 }
 
 /// Handles a successful HTTP response
+#[cfg(test)]
 async fn handle_successful_response(
     app: &mut App,
     tab_index: usize,
@@ -77,6 +83,7 @@ async fn handle_successful_response(
 }
 
 /// Handles request errors and returns appropriate error messages
+#[cfg(test)]
 fn handle_request_error(error: anyhow::Error) -> Result<Option<String>> {
     // Convert to our error type and format for display
     let restless_error: RestlessError = error.into();
@@ -84,6 +91,7 @@ fn handle_request_error(error: anyhow::Error) -> Result<Option<String>> {
 }
 
 /// Validates that all required fields are present for a request
+#[cfg(test)]
 pub fn validate_request_completeness(app: &App) -> Result<()> {
     if app.url_input.trim().is_empty() {
         return Err(RestlessError::invalid_url("URL cannot be empty"));
@@ -94,6 +102,7 @@ pub fn validate_request_completeness(app: &App) -> Result<()> {
 }
 
 /// Clears the response for the current tab
+#[cfg(test)]
 pub fn clear_current_response(app: &mut App) -> Result<()> {
     let current_tab = app
         .tabs
@@ -105,6 +114,7 @@ pub fn clear_current_response(app: &mut App) -> Result<()> {
 }
 
 /// Gets the content type from the current request headers
+#[cfg(test)]
 pub fn get_request_content_type(app: &App) -> Option<String> {
     app.headers_input
         .iter()
@@ -113,6 +123,7 @@ pub fn get_request_content_type(app: &App) -> Option<String> {
 }
 
 /// Sets the content type header for the current request
+#[cfg(test)]
 pub fn set_request_content_type(app: &mut App, content_type: &str) -> Result<()> {
     // Remove existing content-type header
     app.headers_input
@@ -126,6 +137,7 @@ pub fn set_request_content_type(app: &mut App, content_type: &str) -> Result<()>
 }
 
 /// Formats request information for display
+#[cfg(test)]
 pub fn format_request_info(app: &App) -> String {
     let method = match app.selected_method {
         crate::logic::HttpMethod::GET => "GET",
@@ -155,6 +167,7 @@ pub fn format_request_info(app: &App) -> String {
 }
 
 /// Prepares request for sending by performing final validations and setup
+#[cfg(test)]
 pub async fn prepare_request(app: &mut App) -> Result<()> {
     // Sync app state to request
     sync_request_with_app_state(app)?;
@@ -169,7 +182,8 @@ pub async fn prepare_request(app: &mut App) -> Result<()> {
 }
 
 /// Handles request cancellation
-pub fn cancel_request(app: &mut App) -> Result<()> {
+#[cfg(test)]
+pub fn cancel_request(_app: &mut App) -> Result<()> {
     // In a real implementation, this would cancel any ongoing HTTP request
     // For now, we just clear any pending state
 

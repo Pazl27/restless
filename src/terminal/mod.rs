@@ -52,6 +52,7 @@ impl TerminalManager {
     }
 
     /// Gets an immutable reference to the terminal
+    #[allow(dead_code)]
     pub fn terminal(&self) -> &Terminal<CrosstermBackend<Stderr>> {
         &self.terminal
     }
@@ -122,6 +123,7 @@ impl Drop for TerminalManager {
 
 /// Configuration for terminal setup
 #[derive(Debug, Clone)]
+#[cfg(test)]
 pub struct TerminalConfig {
     pub min_width: u16,
     pub min_height: u16,
@@ -129,6 +131,7 @@ pub struct TerminalConfig {
     pub use_alternate_screen: bool,
 }
 
+#[cfg(test)]
 impl Default for TerminalConfig {
     fn default() -> Self {
         Self {
@@ -141,11 +144,15 @@ impl Default for TerminalConfig {
 }
 
 /// Advanced terminal manager with configuration options
+#[cfg(test)]
+#[allow(dead_code)]
 pub struct ConfigurableTerminalManager {
     terminal: Terminal<CrosstermBackend<Stderr>>,
     config: TerminalConfig,
 }
 
+#[cfg(test)]
+#[allow(dead_code)]
 impl ConfigurableTerminalManager {
     /// Creates a new configurable terminal manager
     pub fn new(config: TerminalConfig) -> Result<Self, RestlessError> {
@@ -256,6 +263,7 @@ impl ConfigurableTerminalManager {
     }
 }
 
+#[cfg(test)]
 impl Drop for ConfigurableTerminalManager {
     fn drop(&mut self) {
         if let Err(e) = self.cleanup_terminal() {
@@ -269,6 +277,7 @@ pub mod utils {
     use super::*;
 
     /// Gets the current terminal size
+    #[allow(dead_code)]
     pub fn get_terminal_size() -> Result<(u16, u16), RestlessError> {
         let size = crossterm::terminal::size()
             .map_err(|e| RestlessError::terminal(format!("Failed to get terminal size: {}", e)))?;
@@ -276,6 +285,7 @@ pub mod utils {
     }
 
     /// Checks if the terminal supports colors
+    #[cfg(test)]
     pub fn supports_color() -> bool {
         // This is a simplified check - in reality you might want to check
         // environment variables like TERM, COLORTERM, etc.
@@ -283,11 +293,13 @@ pub mod utils {
     }
 
     /// Checks if we're running in a terminal
+    #[allow(dead_code)]
     pub fn is_terminal() -> bool {
         atty::is(atty::Stream::Stdout) && atty::is(atty::Stream::Stderr)
     }
 
     /// Emergency cleanup function that can be called from signal handlers
+    #[allow(dead_code)]
     pub fn emergency_cleanup() {
         let _ = disable_raw_mode();
         let _ = execute!(io::stderr(), DisableMouseCapture, LeaveAlternateScreen);

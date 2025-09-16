@@ -3,10 +3,14 @@
 //! This module contains handlers for tab-related operations such as creating,
 //! closing, and switching between tabs.
 
+#![allow(dead_code)]
+#![allow(unused_imports)]
+
 use crate::app::App;
 use crate::error::Result;
 
 /// Handles creating a new tab
+#[cfg(test)]
 pub fn handle_new_tab(app: &mut App) -> Result<Option<String>> {
     if let Err(e) = app.add_new_tab() {
         Ok(Some(format!("Tab error: {}", e)))
@@ -16,6 +20,7 @@ pub fn handle_new_tab(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Handles closing the current tab
+#[cfg(test)]
 pub fn handle_close_tab(app: &mut App) -> Result<Option<String>> {
     if let Err(e) = app.close_current_tab() {
         Ok(Some(format!("Tab error: {}", e)))
@@ -25,6 +30,7 @@ pub fn handle_close_tab(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Handles switching to the next tab
+#[cfg(test)]
 pub fn handle_next_tab(app: &mut App) -> Result<Option<String>> {
     if let Err(e) = app.next_tab() {
         Ok(Some(format!("Tab error: {}", e)))
@@ -34,6 +40,7 @@ pub fn handle_next_tab(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Handles switching to the previous tab
+#[cfg(test)]
 pub fn handle_prev_tab(app: &mut App) -> Result<Option<String>> {
     if let Err(e) = app.prev_tab() {
         Ok(Some(format!("Tab error: {}", e)))
@@ -43,6 +50,7 @@ pub fn handle_prev_tab(app: &mut App) -> Result<Option<String>> {
 }
 
 /// Handles switching to a specific tab by index
+#[cfg(test)]
 pub fn handle_switch_to_tab(app: &mut App, index: usize) -> Result<Option<String>> {
     if index >= app.tabs.len() {
         return Ok(Some(format!("Invalid tab index: {}", index)));

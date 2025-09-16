@@ -21,11 +21,13 @@ impl Tab {
         }
     }
 
+    #[allow(dead_code)]
     pub fn method(&self) -> HttpMethod {
         HttpMethod::try_from(&self.request.method).unwrap_or(HttpMethod::GET)
     }
 
-    pub fn ulr(&self) -> &str {
+    #[allow(dead_code)]
+    pub fn url(&self) -> &str {
         &self.request.url
     }
 }

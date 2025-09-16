@@ -42,7 +42,9 @@ pub struct App {
     pub current_header_value: String,
     pub current_param_key: String,
     pub current_param_value: String,
+    #[allow(dead_code)]
     pub editing_header_index: Option<usize>,
+    #[allow(dead_code)]
     pub editing_param_index: Option<usize>,
 
     pub response_tab_selected: usize,
@@ -166,6 +168,7 @@ impl App {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn remove_header(&mut self, index: usize) -> Result<()> {
         if index < self.headers_input.len() {
             self.headers_input.remove(index);
@@ -179,6 +182,7 @@ impl App {
         }
     }
 
+    #[allow(dead_code)]
     pub fn remove_param(&mut self, index: usize) -> Result<()> {
         if index < self.params_input.len() {
             self.params_input.remove(index);
@@ -303,6 +307,7 @@ impl App {
         Ok(())
     }
 
+    #[allow(dead_code)]
     pub fn get_error_message(&self, error: &RestlessError) -> String {
         match error {
             RestlessError::Network(e) => format!("Network Error: {}", e),

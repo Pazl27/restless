@@ -3,6 +3,8 @@
 //! This module serves as the main entry point for rendering the application UI.
 //! It coordinates between different UI components and handles the overall layout.
 
+#![allow(dead_code)]
+
 use super::{
     components::{
         render_response_section, render_status_bar, render_tabs, render_url_input,
